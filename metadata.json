@@ -1,0 +1,5 @@
+{
+  "name": "DitalentWeb1.1",
+  "description": "A modern and minimalist web application for a human resources company to publish job vacancies. It includes a user-facing job board and a comprehensive admin panel (CMS) for managing listings.",
+  "requestFramePermissions": []
+}

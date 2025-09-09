@@ -1,0 +1,277 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  password    String
+  role        String    // "admin", "candidate", "company"
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  profile     CandidateProfile?
+  company     Company?          @relation(fields: [companyId], references: [id])
+  companyId   String?
+  adminRole   Role?             @relation(fields: [roleId], references: [id])
+  roleId      String?
+  sentMessages Message[]
+}
+
+model Company {
+  id                    String    @id @default(cuid())
+  name                  Json      // MultilingualString
+  logo                  String?
+  description           Json      // MultilingualString
+  address               String?
+  phone                 String?
+  rnc                   String?
+  employeeCount         String?   // "1-10", "11-50", etc.
+  industry              String?
+  latitude              Float?
+  longitude             Float?
+  isRecruitmentClient   Boolean   @default(false)
+  
+  plan                  SubscriptionPlan? @relation(fields: [planId], references: [id])
+  planId                String?
+  jobPostingsRemaining  Int?
+  subscriptionEndDate   DateTime?
+
+  socialLinks           Json[]    // SocialLink[]
+  
+  users                 User[]
+  jobs                  Job[]
+  applications          Application[]
+  blockedByProfiles     CandidateProfile[] @relation("BlockedCompanies")
+}
+
+model CandidateProfile {
+  id          String    @id @default(cuid())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String    @unique
+
+  fullName    String
+  headline    Json      // MultilingualString
+  summary     Json      // MultilingualString
+  photoUrl    String?
+  cvUrl       String?
+
+  professionalAreas   String[]
+  location            Json      // MultilingualString
+  educationLevel      String?
+
+  academicLife        Json[]    // Education[]
+  courses             Json[]    // Course[]
+  workLife            Json[]    // Experience[]
+  
+  languages           Json[]    // Language[]
+  teachingExperience  Json[]    // TeachingExperience[]
+  volunteerExperience Json[]    // VolunteerExperience[]
+  
+  skills              String[]
+  competencies        String[]
+  socialSkills        String[]
+  personalityType     String?
+  
+  currentSalary       Float?
+  desiredSalary       Float?
+  desiredContractTypes String[]
+
+  coverLetter         Json      // MultilingualString
+  references          Json[]    // Reference[]
+  socialLinks         Json[]    // SocialLink[]
+
+  blockedCompanies    Company[] @relation("BlockedCompanies")
+  applications        Application[]
+}
+
+model Job {
+  id                String    @id @default(cuid())
+  title             Json      // MultilingualString
+  location          Json      // MultilingualString
+  professionalArea  String
+  type              String    // Full-time, Part-time
+  salary            String
+  description       Json      // MultilingualString
+  requirements      Json      // MultilingualStringArray
+  postedDate        DateTime  @default(now())
+  expiryDate        DateTime?
+  isInternal        Boolean   @default(false)
+  status            String    // "active", "paused", "closed"
+  imageUrl          String?
+
+  company           Company   @relation(fields: [companyId], references: [id])
+  companyId         String
+  
+  applications      Application[]
+  conversations     Conversation[]
+}
+
+model Application {
+  id              String    @id @default(cuid())
+  appliedDate     DateTime  @default(now())
+  status          String    // "Submitted", "In Review", etc.
+
+  job             Job       @relation(fields: [jobId], references: [id])
+  jobId           String
+  company         Company   @relation(fields: [companyId], references: [id])
+  companyId       String
+  candidate       CandidateProfile @relation(fields: [profileId], references: [id])
+  profileId       String
+  
+  conversation    Conversation? @relation(fields: [conversationId], references: [id])
+  conversationId  String?       @unique
+}
+
+model Conversation {
+  id              String    @id @default(cuid())
+  createdAt       DateTime  @default(now())
+  
+  participantIds  String[]
+  
+  job             Job       @relation(fields: [jobId], references: [id])
+  jobId           String
+  
+  messages        Message[]
+  application     Application?
+}
+
+model Message {
+  id              String    @id @default(cuid())
+  timestamp       DateTime  @default(now())
+  text            String
+
+  conversation    Conversation @relation(fields: [conversationId], references: [id])
+  conversationId  String
+  sender          User      @relation(fields: [senderId], references: [id])
+  senderId        String
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  permissions String[] // List of Permission strings
+  users       User[]
+}
+
+model SubscriptionPlan {
+  id                  String    @id @default(cuid())
+  name                Json      // MultilingualString
+  description         Json      // MultilingualString
+  price               Float
+  currency            String
+  type                String    // "subscription" or "package"
+  durationUnit        String?   // "week", "month", "year"
+  durationValue       Int?
+  jobPostingsLimit    Int       // -1 for unlimited
+  features            String[]
+  isFeatured          Boolean   @default(false)
+  isActive            Boolean   @default(true)
+  
+  companies           Company[]
+}
+
+// --- CMS Models ---
+
+model Service {
+  id          String @id @default(cuid())
+  title       Json   // MultilingualString
+  description Json   // MultilingualString
+}
+
+model TeamMember {
+  id        String @id @default(cuid())
+  name      Json   // MultilingualString
+  title     Json   // MultilingualString
+  photoUrl  String
+}
+
+model Testimonial {
+  id      String @id @default(cuid())
+  quote   Json   // MultilingualString
+  author  Json   // MultilingualString
+  company Json   // MultilingualString
+}
+
+model BlogPost {
+  id            String   @id @default(cuid())
+  title         Json     // MultilingualString
+  content       Json     // MultilingualString
+  author        Json     // MultilingualString
+  publishedDate DateTime @default(now())
+  imageUrl      String?
+}
+
+model Resource {
+  id          String @id @default(cuid())
+  title       Json   // MultilingualString
+  description Json   // MultilingualString
+  fileUrl     String
+}
+
+model Banner {
+  id        String @id @default(cuid())
+  name      String
+  location  String // e.g., "homepage", "jobs_page"
+  slides    Json   // Slide[]
+  config    Json
+}
+
+model PopupAd {
+  id          String  @id @default(cuid())
+  name        String
+  isActive    Boolean @default(false)
+  content     Json
+  appearance  Json
+  triggers    Json
+  frequency   Json
+  targeting   Json
+}
+
+model SiteSettings {
+  id                      String   @id @default(cuid())
+  mission                 Json     // MultilingualString
+  vision                  Json     // MultilingualString
+  values                  Json     // MultilingualString
+  contactAddress          String
+  contactPhone            String
+  contactEmail            String
+  contactLatitude         Float?
+  contactLongitude        Float?
+  careersPageTitle        Json     // MultilingualString
+  careersPageSubtitle     Json     // MultilingualString
+  careersPageCtaTitle     Json     // MultilingualString
+  careersPageCtaText      Json     // MultilingualString
+  jobTypes                String[]
+  educationLevels         String[]
+  footerCopyright         Json     // MultilingualString
+  footerLinks             Json[]   // FooterLink[]
+  paymentGateways         Json
+  enableLanguageSwitcher  Boolean
+  availableLanguages      String[]
+  defaultLanguage         String
+  availableLocations      String[]
+}
+
+model ContactSubmission {
+  id          String   @id @default(cuid())
+  name        String
+  email       String
+  subject     String
+  message     String
+  submittedAt DateTime @default(now())
+}
+
+model CVSubmission {
+  id          String   @id @default(cuid())
+  name        String
+  email       String
+  cvBase64    String
+  fileName    String
+  submittedAt DateTime @default(now())
+}

@@ -1,0 +1,33 @@
+# Dependencias
+/node_modules
+/backend/node_modules
+
+# Build artifacts
+/dist
+/build
+/backend/dist
+
+# Variables de entorno
+.env
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Docker
+.dockerignore
+docker-compose.override.yml # Si usas uno
+.DS_Store # macOS specific
+
+# Prisma
+/backend/prisma/migrations # Las migraciones generadas pueden ser grandes o específicas de entorno
+/backend/.env # Si tienes un .env en el backend
+
+# Archivos de base de datos (si no están ya)
+*.sqlite
+*.db
+*.sql

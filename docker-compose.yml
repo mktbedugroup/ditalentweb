@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:14
+    container_name: ditalent_db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ditalent
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ditalent_backend
+    ports:
+      - "8088:8080"
+      - "5555:5555"
+    environment:
+      DATABASE_URL: "postgresql://user:password@db:5432/ditalent"
+    volumes:
+      - ./backend:/usr/src/app
+      - /usr/src/app/node_modules # Don't mount host node_modules
+    depends_on:
+      - db
+    command: npm run dev
+    user: "root"
+
+volumes:
+  postgres_data:
