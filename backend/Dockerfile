@@ -1,6 +1,9 @@
 # Use an official Node.js runtime as a parent image
 FROM node:20-slim
 
+# Install OpenSSL, required by Prisma
+RUN apt-get update && apt-get install -y openssl
+
 # Set the working directory in the container
 WORKDIR /app
 
