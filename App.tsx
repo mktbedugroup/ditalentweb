@@ -1,4 +1,3 @@
-
 import React from 'react';
 // FIX: Use namespace import for react-router-dom to resolve module export issues.
 import * as ReactRouterDOM from 'react-router-dom';
@@ -29,6 +28,7 @@ import AdminSiteSettingsPage from './pages/admin/AdminSiteSettingsPage';
 import AdminJobApplicantsPage from './pages/admin/AdminJobApplicantsPage';
 import AdminViewCandidateProfilePage from './pages/admin/AdminViewCandidateProfilePage';
 import AdminCvSubmissionsPage from './pages/admin/AdminCvSubmissionsPage';
+import AdminNewsletterPage from './pages/admin/AdminNewsletterPage';
 import AdminPlansPage from './pages/admin/AdminPlansPage';
 import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
 import AdminMapPage from './pages/admin/AdminMapPage';
@@ -144,6 +144,7 @@ const AppRoutes: React.FC = () => {
                   <Route path="/roles" element={<PermissionGuard permission="manage_roles"><AdminRolesPage /></PermissionGuard>} />
                   <Route path="/submissions" element={<PermissionGuard permission="manage_submissions"><AdminSubmissionsPage /></PermissionGuard>} />
                   <Route path="/cv-submissions" element={<PermissionGuard permission="manage_submissions"><AdminCvSubmissionsPage /></PermissionGuard>} />
+                  <Route path="/newsletter" element={<PermissionGuard permission="manage_submissions"><AdminNewsletterPage /></PermissionGuard>} />
                   <Route path="/services" element={<PermissionGuard permission="manage_content"><AdminServicesPage /></PermissionGuard>} />
                   <Route path="/team" element={<PermissionGuard permission="manage_content"><AdminTeamPage /></PermissionGuard>} />
                   <Route path="/testimonials" element={<PermissionGuard permission="manage_content"><AdminTestimonialsPage /></PermissionGuard>} />
@@ -207,13 +208,13 @@ const AppRoutes: React.FC = () => {
 
 const App: React.FC = () => {
   return (
-    <I18nProvider>
-      <AuthProvider>
-        <HashRouter>
+    <HashRouter>
+      <I18nProvider>
+        <AuthProvider>
           <AppRoutes />
-        </HashRouter>
-      </AuthProvider>
-    </I18nProvider>
+        </AuthProvider>
+      </I18nProvider>
+    </HashRouter>
   );
 };
 

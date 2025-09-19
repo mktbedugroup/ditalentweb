@@ -89,6 +89,17 @@ const AdminUsersPage: React.FC = () => {
         setIsModalOpen(true);
     };
 
+    const handleToggleActive = async (userId: string, isActive: boolean) => {
+        if (window.confirm(isActive ? t('admin.users.confirmActivate') : t('admin.users.confirmDeactivate'))) {
+            try {
+                await api.updateUserStatus(userId, isActive);
+                fetchData(); // Refresh data
+            } catch (error: any) {
+                alert(error.message);
+            }
+        }
+    };
+
     const handleDelete = async (userId: string) => {
         if (window.confirm(t('admin.users.confirmDelete'))) {
             try {
@@ -130,6 +141,7 @@ const AdminUsersPage: React.FC = () => {
                                 <tr>
                                     <th className="p-4 text-sm font-semibold text-gray-600">{t('admin.users.email')}</th>
                                     <th className="p-4 text-sm font-semibold text-gray-600">{t('admin.users.role')}</th>
+                                    <th className="p-4 text-sm font-semibold text-gray-600">{t('admin.users.status')}</th> {/* New column */}
                                     <th className="p-4 text-sm font-semibold text-gray-600">{t('admin.users.actions')}</th>
                                 </tr>
                             </thead>
@@ -140,10 +152,24 @@ const AdminUsersPage: React.FC = () => {
                                         <td className="p-4 text-gray-600 capitalize">
                                             {user.role === 'admin' ? getRoleName(user.roleId) : user.role}
                                         </td>
+                                        <td className="p-4"> {/* New cell for status */}
+                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                                {user.isActive ? t('admin.users.active') : t('admin.users.inactive')}
+                                            </span>
+                                        </td>
                                         <td className="p-4">
                                             <div className="flex space-x-2">
                                                 <Button variant="secondary" size="sm" onClick={() => handleEdit(user)}>
                                                     {t('admin.users.edit')}
+                                                </Button>
+                                                <Button 
+                                                    variant={user.isActive ? "danger" : "success"} // Change variant based on status
+                                                    size="sm"
+                                                    onClick={() => handleToggleActive(user.id, !user.isActive)} // New handler
+                                                    disabled={user.email === 'admin@hrportal.com'} // Prevent deactivating super admin
+                                                    title={user.email === 'admin@hrportal.com' ? t('admin.users.cannotToggleAdmin') : (user.isActive ? t('admin.users.deactivate') : t('admin.users.activate'))}
+                                                >
+                                                    {user.isActive ? t('admin.users.deactivate') : t('admin.users.activate')}
                                                 </Button>
                                                 <Button 
                                                     variant="danger" 

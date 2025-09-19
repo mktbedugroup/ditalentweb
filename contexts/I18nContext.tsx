@@ -22,7 +22,7 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
 
   useEffect(() => {
-    const initLocale = async () => {
+    const initLocaleAndTranslations = async () => {
       setLoading(true);
       try {
         const settings = await api.getSiteSettings();
@@ -33,48 +33,53 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
             ? savedLocale 
             : settings.defaultLanguage || 'es';
         
+        const response = await fetch(`./translations/${initialLocale}.json`);
+        if (!response.ok) {
+            throw new Error(`Could not load translations for ${initialLocale}`);
+        }
+        const data = await response.json();
+        console.log(`[i18n Debug] Loaded translations for ${initialLocale}:`, data); // NEW CONSOLE.LOG
+        setTranslations(data);
+
         setLocaleState(initialLocale);
       } catch (e) {
-        console.error("Failed to load site settings for locale", e);
+        console.error("Failed to load initial data (settings or translations)", e);
         setLocaleState('es');
+        setTranslations({});
       } finally {
         setLoading(false);
       }
     };
-    initLocale();
+    initLocaleAndTranslations();
   }, []);
 
-  useEffect(() => {
-    if (loading) return; // Wait for initial locale to be set
+  
 
-    const fetchTranslations = async (lang: Locale) => {
-      try {
-        const response = await fetch(`./translations/${lang}.json`);
-        if (!response.ok) {
-            throw new Error(`Could not load translations for ${lang}`);
-        }
-        const data = await response.json();
-        setTranslations(data);
-      } catch (error) {
-        console.error(error);
-        if (locale !== 'es') {
-          // Fallback to Spanish if the selected language file fails to load
-          setLocale('es');
-        }
-      }
-    };
-    fetchTranslations(locale);
-  }, [locale, loading]);
-
-  const setLocale = (newLocale: Locale) => {
+  const setLocale = useCallback(async (newLocale: Locale) => {
       if (siteSettings?.availableLanguages?.includes(newLocale)) {
         localStorage.setItem('locale', newLocale);
         setLocaleState(newLocale);
+
+        try {
+            const response = await fetch(`./translations/${newLocale}.json`);
+            if (!response.ok) {
+                throw new Error(`Could not load translations for ${newLocale}`);
+            }
+            const data = await response.json();
+            setTranslations(data);
+        } catch (error) {
+            console.error(`Failed to load translations for ${newLocale}`, error);
+            setTranslations({});
+        }
       }
-  };
+  }, [siteSettings]);
 
   const t = useCallback((key: string): string => {
+    console.log(`[i18n Debug] Attempting to translate key: ${key}`);
+    console.log(`[i18n Debug] Current translations object:`, translations);
+
     if (!translations) {
+      console.log(`[i18n Debug] Translations object is null or empty for key: ${key}`);
       return key;
     }
     const keys = key.split('.');
@@ -83,9 +88,11 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (result && typeof result === 'object' && k in result) {
         result = result[k];
       } else {
+        console.log(`[i18n Debug] Key part "${k}" not found in current result for key: ${key}`);
         return key;
       }
     }
+    console.log(`[i18n Debug] Successfully translated key: ${key} to: ${result}`);
     return typeof result === 'string' ? result : key;
   }, [translations]);
 

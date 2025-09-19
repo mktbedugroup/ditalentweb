@@ -185,6 +185,7 @@
       "roles": "Roles & Permissions",
       "contactForms": "Contact Forms",
       "cvSubmissions": "CV Submissions",
+      "newsletter": "Newsletter",
       "content": "Content",
       "homepageBanner": "Banners",
       "popups": "Pop-up Ads",
@@ -217,7 +218,9 @@
       "addCompany": "Add Company",
       "manageContent": "Manage Content",
       "recentSubmissions": "Recent Submissions",
-      "viewAllSubmissions": "View all submissions"
+      "viewAllSubmissions": "View all submissions",
+      "newCvSubmissions": "New CV Submissions",
+      "newContactSubmissions": "New Contact Messages"
     },
     "analytics": {
       "title": "Reports & Analytics",
@@ -266,11 +269,19 @@
         "addRequirement": "Add Requirement",
         "isInternal": "Internal Vacancy (for Ditalent's career page)",
         "cancel": "Cancel",
-        "save": "Save"
+        "save": "Save",
+        "dropdown": {
+          "restart": "Restart",
+          "stop": "Stop",
+          "hide": "Hide",
+          "publish": "Publish",
+          "excel": "Download Excel"
+        }
       }
     },
     "companies": {
       "title": "Manage Companies",
+      "dashboardTitle": "Companies Dashboard",
       "add": "Add Company",
       "logo": "Logo",
       "name": "Name",
@@ -283,6 +294,16 @@
       "plan": "Plan",
       "noPlan": "No Plan",
       "changePlan": "Change Plan",
+      "registrationDate": "Registration Date",
+      "jobPosts": "Job Posts",
+      "location": "Location",
+      "filterByLocation": "Filter by location...",
+      "filter": "Filter",
+      "kpi": {
+          "totalCompanies": "Total Companies",
+          "totalJobs": "Total Job Posts",
+          "proCompanies": "Companies on Pro Plan"
+      },
       "form": {
         "name": "Company Name",
         "logo": "Logo",
@@ -342,24 +363,45 @@
     },
     "submissions": {
       "title": "Contact Form Submissions",
+      "description": "Manage messages and inquiries sent through the contact form.",
       "loading": "Loading submissions...",
       "noSubmissions": "No submissions yet.",
       "date": "Date",
       "name": "Name",
       "email": "Email",
       "subject": "Subject",
-      "message": "Message"
+      "message": "Message",
+      "status": "Status",
+      "actions": "Actions",
+      "searchPlaceholder": "Search by name, email, subject...",
+      "filterAll": "All statuses",
+      "statuses": {
+        "New": "New",
+        "In Progress": "In Progress",
+        "Resolved": "Resolved"
+      },
+      "viewDetails": "View",
+      "modalTitle": "Message Details"
     },
     "cvSubmissions": {
       "title": "Spontaneous CV Submissions",
+      "description": "Manage resumes sent spontaneously by candidates.",
       "loading": "Loading submissions...",
       "noSubmissions": "No CV submissions yet.",
       "date": "Date",
       "name": "Name",
       "email": "Email",
+      "subject": "Subject",
       "fileName": "File Name",
       "actions": "Actions",
-      "download": "Download CV"
+      "download": "Download",
+      "read": "Read",
+      "unread": "Unread",
+      "searchPlaceholder": "Search by name, email, subject...",
+      "filterAll": "All",
+      "filterUnread": "Unread",
+      "filterRead": "Read",
+      "downloadSelected": "Download Selected"
     },
     "services": {
         "title": "Manage Services",
@@ -620,6 +662,10 @@
         "stripeSecretKey": "Stripe Secret Key",
         "paypalClientId": "PayPal Client ID",
         "paypalClientSecret": "PayPal Client Secret",
+        "emailConfigTitle": "Email Sending Configuration",
+        "emailProvider": "Provider",
+        "emailFrom": "Sender Email",
+        "emailApiKey": "API Key",
         "footerContent": "Footer Content",
         "copyrightText": "Copyright Text",
         "footerLinks": "Footer Links",
@@ -897,7 +943,8 @@
         "submit": "Submit"
     },
     "day": "day",
-    "days": "days"
+    "days": "days",
+    "close": "Close"
   },
   "status": {
     "Submitted": "Submitted",

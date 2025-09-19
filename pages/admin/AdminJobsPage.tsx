@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../../services/api';
 import type { Job, Company, Application, SiteSettings, MultilingualString, MultilingualStringArray } from '../../types';
 import { Button } from '../../components/common/Button';
@@ -11,6 +10,8 @@ import { MultilingualInput, MultilingualTextarea, MultilingualListManager } from
 import { useI18n } from '../../contexts/I18nContext';
 import { PROFESSIONAL_AREAS } from '../../constants';
 import { Pagination } from '../../components/common/Pagination';
+import { FaEllipsisV, FaUsers, FaDownload } from 'react-icons/fa';
+
 const { Link } = ReactRouterDOM;
 
 // Form component for creating/editing jobs
@@ -122,7 +123,6 @@ const JobForm: React.FC<{ job: Partial<Job>, companies: Company[], onSave: (data
 const AdminJobsPage: React.FC = () => {
     const [jobs, setJobs] = useState<Job[]>([]);
     const [companies, setCompanies] = useState<Company[]>([]);
-    const [applications, setApplications] = useState<Application[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingJob, setEditingJob] = useState<Partial<Job> | null>(null);
@@ -136,16 +136,14 @@ const AdminJobsPage: React.FC = () => {
     const fetchJobsAndApps = useCallback(async () => {
         setLoading(true);
         try {
-            const [jobsResponse, companiesData, appsData] = await Promise.all([
-                api.getJobs({ page: currentPage, limit: ITEMS_PER_PAGE, searchTerm }),
+            const [jobsResponse, companiesData] = await Promise.all([
+                api.getJobs({ page: currentPage, limit: ITEMS_PER_PAGE, searchTerm, includeCompany: true, includeApplications: true }),
                 api.getCompanies(),
-                api.getAllApplications(),
             ]);
             setJobs(jobsResponse.jobs);
             setTotalJobs(jobsResponse.total);
             setTotalPages(Math.ceil(jobsResponse.total / ITEMS_PER_PAGE));
             setCompanies(companiesData);
-            setApplications(appsData);
         } catch (error) {
             console.error("Failed to fetch data", error);
         } finally {
@@ -161,10 +159,6 @@ const AdminJobsPage: React.FC = () => {
         setSearchTerm(e.target.value);
         setCurrentPage(1);
     }
-    
-    const getApplicantCount = (jobId: string) => {
-        return applications.filter(app => app.jobId === jobId).length;
-    };
     
     const handleCreateNew = () => {
         setEditingJob({ 
@@ -211,19 +205,58 @@ const AdminJobsPage: React.FC = () => {
         }
     };
 
-    const handleSave = async (jobData: Omit<Job, 'id' | 'postedDate'> & { id?: string }) => {
-        await api.saveJob(jobData);
-        fetchJobsAndApps();
-        setIsModalOpen(false);
-        setEditingJob(null);
-    };
-
     const handleToggleStatus = async (job: Job) => {
         const newStatus = job.status === 'active' ? 'paused' : 'active';
         await api.updateJobStatus(job.id, newStatus);
         fetchJobsAndApps();
     };
-    
+
+    const handleHideJob = async (job: Job) => {
+        await api.saveJob({ ...job, isInternal: true });
+        fetchJobsAndApps();
+    };
+
+    const handlePublishJob = async (job: Job) => {
+        await api.saveJob({ ...job, isInternal: false, status: 'active' });
+        fetchJobsAndApps();
+    };
+
+    const handleDownloadExcel = async (jobId: string) => {
+        try {
+            const blob = await api.downloadJobApplicantsExcel(jobId);
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `applicants_${jobId}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error("Failed to download Excel", error);
+            alert("Error al descargar el archivo Excel.");
+        }
+    };
+
+    const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setOpenDropdownId(null);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
+    const getApplicantCount = (job: Job) => {
+        return job.applications?.length || 0;
+    };
+
     return (
         <div>
             <div className="flex justify-between items-center mb-6">
@@ -248,6 +281,7 @@ const AdminJobsPage: React.FC = () => {
                         <table className="w-full text-left">
                             <thead className="bg-gray-50">
                                 <tr>
+                                    <th className="p-4 text-sm font-semibold text-gray-600">{t('admin.jobs.tableDate')}</th>
                                     <th className="p-4 text-sm font-semibold text-gray-600">{t('admin.jobs.tableTitle')}</th>
                                     <th className="p-4 text-sm font-semibold text-gray-600">{t('admin.jobs.tableCompany')}</th>
                                     <th className="p-4 text-sm font-semibold text-gray-600">{t('admin.jobs.tableApplicants')}</th>
@@ -258,27 +292,70 @@ const AdminJobsPage: React.FC = () => {
                             <tbody className="divide-y">
                                 {jobs.map(job => (
                                     <tr key={job.id} className="hover:bg-gray-50">
+                                        <td className="p-4 text-sm text-gray-600 whitespace-nowrap">{new Date(job.postedDate).toLocaleDateString()}</td>
                                         <td className="p-4 font-medium">{t_dynamic(job.title)}</td>
-                                        <td className="p-4 text-gray-600">{t_dynamic(companies.find(c => c.id === job.companyId)?.name)}</td>
+                                        <td className="p-4 text-gray-600">{t_dynamic(job.company?.name)}</td>
                                         <td className="p-4 text-gray-600">
-                                            <Link to={`/admin/jobs/${job.id}/applicants`} className="text-primary hover:underline">
-                                                {getApplicantCount(job.id)}
+                                            <Link to={`/admin/jobs/${job.id}/applicants`} className="text-primary hover:underline flex items-center">
+                                                <FaUsers className="mr-2"/> {getApplicantCount(job)}
                                             </Link>
                                         </td>
                                         <td className="p-4">
-                                            <span className={`px-2 py-1 text-xs font-semibold rounded-full capitalize ${job.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                            <span className={`px-2 py-1 text-xs font-semibold rounded-full capitalize ${job.status === 'active' ? 'bg-green-100 text-green-800' : job.status === 'paused' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
                                                 {job.status}
                                             </span>
+                                            {job.isInternal && <span className="ml-2 px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">{t('admin.jobs.form.dropdown.hide')}</span>}
                                         </td>
-                                        <td className="p-4">
-                                            <div className="flex space-x-2">
-                                                <Button variant="light" size="sm" onClick={() => handleToggleStatus(job)}>
-                                                    {job.status === 'active' ? t('admin.jobs.pause') : t('admin.jobs.activate')}
-                                                </Button>
-                                                <Button variant="secondary" size="sm" onClick={() => handleEdit(job)}>{t('admin.jobs.edit')}</Button>
-                                                <Button variant="light" size="sm" onClick={() => handleDuplicate(job)}>{t('admin.jobs.duplicate')}</Button>
-                                                <Button variant="danger" size="sm" onClick={() => handleDelete(job.id)}>{t('admin.jobs.delete')}</Button>
-                                            </div>
+                                        <td className="p-4 relative" ref={dropdownRef}>
+                                            <Button variant="light" size="sm" onClick={() => setOpenDropdownId(openDropdownId === job.id ? null : job.id)}>
+                                                <FaEllipsisV />
+                                            </Button>
+                                            {openDropdownId === job.id && (
+                                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 py-1">
+                                                    <button 
+                                                        onClick={() => { handleToggleStatus(job); setOpenDropdownId(null); }}
+                                                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                                                    >
+                                                        {job.status === 'active' ? t('admin.jobs.form.dropdown.stop') : t('admin.jobs.form.dropdown.restart')}
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => { handlePublishJob(job); setOpenDropdownId(null); }}
+                                                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                                                    >
+                                                        {t('admin.jobs.form.dropdown.publish')}
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => { handleHideJob(job); setOpenDropdownId(null); }}
+                                                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                                                    >
+                                                        {t('admin.jobs.form.dropdown.hide')}
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => { handleEdit(job); setOpenDropdownId(null); }}
+                                                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                                                    >
+                                                        {t('admin.jobs.edit')}
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => { handleDuplicate(job); setOpenDropdownId(null); }}
+                                                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                                                    >
+                                                        {t('admin.jobs.duplicate')}
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => { handleDelete(job.id); setOpenDropdownId(null); }}
+                                                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left text-red-600"
+                                                    >
+                                                        {t('admin.jobs.delete')}
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => { handleDownloadExcel(job.id); setOpenDropdownId(null); }}
+                                                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                                                    >
+                                                        <FaDownload className="inline-block mr-2"/>{t('admin.jobs.form.dropdown.excel')}
+                                                    </button>
+                                                </div>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}

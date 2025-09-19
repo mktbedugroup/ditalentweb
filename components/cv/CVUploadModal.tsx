@@ -4,7 +4,7 @@ import { Button } from '../common/Button';
 interface CVUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: { name: string, email: string, cvBase64: string, fileName: string }) => Promise<void>;
+  onSubmit: (data: { name: string, email: string, subject: string, cvBase64: string, fileName: string }) => Promise<void>;
 }
 
 const fileToBase64 = (file: File): Promise<string> => {
@@ -19,6 +19,7 @@ const fileToBase64 = (file: File): Promise<string> => {
 const CVUploadModal: React.FC<CVUploadModalProps> = ({ isOpen, onClose, onSubmit }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [subject, setSubject] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState('');
   const [error, setError] = useState('');
@@ -37,7 +38,7 @@ const CVUploadModal: React.FC<CVUploadModalProps> = ({ isOpen, onClose, onSubmit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!name || !email || !file) {
+    if (!name || !email || !subject || !file) {
       setError('Por favor, completa todos los campos y selecciona un archivo.');
       return;
     }
@@ -45,7 +46,7 @@ const CVUploadModal: React.FC<CVUploadModalProps> = ({ isOpen, onClose, onSubmit
     setLoading(true);
     try {
       const cvBase64 = await fileToBase64(file);
-      await onSubmit({ name, email, cvBase64, fileName });
+      await onSubmit({ name, email, subject, cvBase64, fileName });
     } catch (err) {
       setError('Hubo un error al procesar el archivo.');
     } finally {
@@ -68,6 +69,10 @@ const CVUploadModal: React.FC<CVUploadModalProps> = ({ isOpen, onClose, onSubmit
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
             <input type="email" id="email" value={email} onChange={e => setEmail(e.target.value)} required className="mt-1 w-full p-2 border border-gray-300 rounded-md bg-white text-gray-900" />
+          </div>
+          <div>
+            <label htmlFor="subject" className="block text-sm font-medium text-gray-700">Asunto</label>
+            <input type="text" id="subject" value={subject} onChange={e => setSubject(e.target.value)} required className="mt-1 w-full p-2 border border-gray-300 rounded-md bg-white text-gray-900" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Adjuntar CV (PDF, DOC, DOCX, JPG)</label>

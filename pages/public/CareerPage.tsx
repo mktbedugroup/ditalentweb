@@ -39,7 +39,7 @@ const CareerPage: React.FC = () => {
     fetchData();
   }, []);
 
-  const handleCvSubmit = async (data: { name: string, email: string, cvBase64: string, fileName: string }) => {
+  const handleCvSubmit = async (data: { name: string, email: string, subject: string, cvBase64: string, fileName: string }) => {
       try {
           await api.saveCvSubmission(data);
           setIsCvModalOpen(false);

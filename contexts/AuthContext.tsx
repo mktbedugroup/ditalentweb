@@ -1,7 +1,8 @@
-import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
 import type { User, Permission } from '../types';
 import { api } from '../services/api';
 import { PERMISSIONS } from '../constants';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 
 // Add a type for the company registration data
 export type CompanyRegistrationData = {
@@ -26,15 +27,37 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+const INACTIVITY_TIMEOUT = 20 * 60 * 1000; // 20 minutes in milliseconds
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate(); // Initialize useNavigate
+  const inactivityTimer = useRef<NodeJS.Timeout | null>(null);
+
+  const clearInactivityTimer = useCallback(() => {
+    if (inactivityTimer.current) {
+      clearTimeout(inactivityTimer.current);
+    }
+  }, []);
+
+  const resetInactivityTimer = useCallback(() => {
+    clearInactivityTimer();
+    inactivityTimer.current = setTimeout(() => {
+      console.log('Inactividad detectada, cerrando sesión...');
+      // Call the actual logout logic
+      updateUserAndPermissions(null);
+      navigate('/login'); // Redirect to login page
+    }, INACTIVITY_TIMEOUT);
+  }, [clearInactivityTimer, navigate]);
+
 
   const updateUserAndPermissions = useCallback(async (loggedInUser: User | null) => {
     setUser(loggedInUser);
     if (loggedInUser) {
       sessionStorage.setItem('user', JSON.stringify(loggedInUser));
+      
       if (loggedInUser.role === 'admin') {
         if (!loggedInUser.roleId) {
           // Super admin gets all permissions
@@ -47,12 +70,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setPermissions([]); // Non-admin roles have no admin permissions
       }
+      resetInactivityTimer(); // Reset timer on user activity/login
     } else {
       sessionStorage.removeItem('user');
       sessionStorage.removeItem('token');
       setPermissions([]);
+      
+      clearInactivityTimer(); // Clear timer on logout
     }
-  }, []);
+  }, [resetInactivityTimer, clearInactivityTimer]);
 
   useEffect(() => {
     const savedUserJson = sessionStorage.getItem('user');
@@ -62,7 +88,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updateUserAndPermissions(savedUser);
     }
     setLoading(false);
-  }, [updateUserAndPermissions]);
+
+    // Set up activity listeners
+    window.addEventListener('mousemove', resetInactivityTimer);
+    window.addEventListener('keydown', resetInactivityTimer);
+    window.addEventListener('scroll', resetInactivityTimer);
+    window.addEventListener('click', resetInactivityTimer);
+
+    return () => {
+      // Clean up
+      clearInactivityTimer();
+      window.removeEventListener('mousemove', resetInactivityTimer);
+      window.removeEventListener('keydown', resetInactivityTimer);
+      window.removeEventListener('scroll', resetInactivityTimer);
+      window.removeEventListener('click', resetInactivityTimer);
+    };
+  }, [updateUserAndPermissions, resetInactivityTimer, clearInactivityTimer]);
   
   const login = async (email: string, pass: string) => {
     setLoading(true);
@@ -70,6 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { user: loggedInUser, token } = await api.login(email, pass);
         sessionStorage.setItem('token', token);
         await updateUserAndPermissions(loggedInUser);
+        resetInactivityTimer(); // Start timer after successful login
         return { user: loggedInUser, token };
     } finally {
         setLoading(false);
@@ -89,6 +131,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     updateUserAndPermissions(null);
+    navigate('/login'); // Ensure navigation to login on explicit logout
   };
   
   const hasPermission = (permission: Permission) => {

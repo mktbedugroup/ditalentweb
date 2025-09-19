@@ -1,29 +1,26 @@
 # Use an official Node.js runtime as a parent image
-FROM node:18-slim
-
-RUN apt-get update -y && apt-get install -y openssl
+FROM node:20-slim
 
 # Set the working directory in the container
-WORKDIR /usr/src/app
-
-# Copy package.json and package-lock.json (or yarn.lock)
-COPY package*.json ./
+WORKDIR /app
 
 # Install app dependencies
-# Using --legacy-peer-deps to avoid issues with some dependencies
-RUN npm install --legacy-peer-deps
+# A wildcard is used to ensure both package.json AND package-lock.json are copied
+# where available (npm@5+)
+COPY package*.json ./
 
-# Copy the prisma directory
-COPY prisma ./prisma
+# Install dependencies
+RUN npm install
 
-# Generate Prisma client
-RUN npx prisma generate
-
-# Copy the rest of the application's code
+# Copy app source code
 COPY . .
 
-# Make port 8080 available to the world outside this container
+# Build the TypeScript application
+RUN npm run build
+
+# Expose the port the app runs on
 EXPOSE 8080
 
-# Define the command to run the app
-CMD ["npm", "run", "dev"]
+# Run the web service on container startup
+CMD [ "npm", "start" ]
+# Forzar reconstrucción de caché: ${Date.now()}

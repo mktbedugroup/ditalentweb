@@ -39,7 +39,7 @@ export const PopupDisplay: React.FC<PopupDisplayProps> = ({ popup, onClose }) =>
                     <h3 className="text-2xl font-bold text-gray-800">{t_dynamic(popup.content.title)}</h3>
                     <p className="mt-2 text-gray-600">{t_dynamic(popup.content.text)}</p>
                     <div className="mt-6">
-                        <a href={popup.content.ctaButton.link}>
+                        <a href={popup.redirectUrl || popup.content.ctaButton.link} { ...((popup.openInNewTab === undefined || popup.openInNewTab === true) && { target: "_blank", rel: "noopener noreferrer" }) }>
                             <Button>{t_dynamic(popup.content.ctaButton.text)}</Button>
                         </a>
                     </div>

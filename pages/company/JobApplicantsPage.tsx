@@ -1,29 +1,32 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../../services/api';
 import type { Application, CandidateProfile, Job } from '../../types';
 import * as ReactRouterDOM from 'react-router-dom';
-const { useParams, Link } = ReactRouterDOM;
+import { DragDropContext, Droppable, Draggable, OnDragEndResponder } from '@hello-pangea/dnd';
 import { useI18n } from '../../contexts/I18nContext';
 import { ApplicantCard } from '../../components/applicants/ApplicantCard';
 
-const StatCard: React.FC<{ title: string; count: number }> = ({ title, count }) => (
-    <div className="bg-white p-4 rounded-lg shadow-sm text-center">
-        <p className="text-2xl font-bold text-primary">{count}</p>
-        <p className="text-sm text-gray-500">{title}</p>
-    </div>
-);
+// A type for our columns state
+interface Column {
+    id: Application['status'];
+    title: string;
+    applicantIds: string[];
+}
 
+interface Columns {
+    [key: string]: Column;
+}
 
 const JobApplicantsPage: React.FC = () => {
-    const { jobId } = useParams<{ jobId: string }>();
-    const [job, setJob] = useState<Job | null>(null);
-    const [applicants, setApplicants] = useState<Application[]>([]);
-    const [profiles, setProfiles] = useState<Map<string, CandidateProfile>>(new Map());
-    const [loading, setLoading] = useState(true);
-    const { t, t_dynamic } = useI18n();
-    const [draggedOverColumn, setDraggedOverColumn] = useState<Application['status'] | null>(null);
+    const { jobId } = ReactRouterDOM.useParams<{ jobId: string }>();
+    const { t } = useI18n();
 
-    const hiringStages: Application['status'][] = ['Submitted', 'In Review', 'Interviewing', 'Hired', 'Rejected'];
+    const [job, setJob] = useState<Job | null>(null);
+    const [applicants, setApplicants] = useState<Record<string, Application>>({});
+    const [profiles, setProfiles] = useState<Record<string, CandidateProfile>>({});
+    const [columns, setColumns] = useState<Columns>({});
+    const [columnOrder, setColumnOrder] = useState<Application['status'][]>(['Submitted', 'In Review', 'Interviewing', 'Hired', 'Rejected']);
+    const [loading, setLoading] = useState(true);
 
     const fetchApplicants = useCallback(async () => {
         if (!jobId) return;
@@ -34,105 +37,159 @@ const JobApplicantsPage: React.FC = () => {
                 api.getApplicantsByJobId(jobId)
             ]);
             setJob(jobData || null);
-            setApplicants(applicantsData);
 
-            const profileMap = new Map<string, CandidateProfile>();
-            for (const app of applicantsData) {
-                const profile = await api.getProfileById(app.profileId);
+            const profilesData = await Promise.all(applicantsData.map(app => api.getProfileById(app.profileId)));
+
+            const newApplicants: Record<string, Application> = {};
+            const newProfiles: Record<string, CandidateProfile> = {};
+            const newColumns: Columns = {
+                'Submitted': { id: 'Submitted', title: t('status.Submitted'), applicantIds: [] },
+                'In Review': { id: 'In Review', title: t('status.In Review'), applicantIds: [] },
+                'Interviewing': { id: 'Interviewing', title: t('status.Interviewing'), applicantIds: [] },
+                'Hired': { id: 'Hired', title: t('status.Hired'), applicantIds: [] },
+                'Rejected': { id: 'Rejected', title: t('status.Rejected'), applicantIds: [] },
+            };
+
+            applicantsData.forEach((app, index) => {
+                newApplicants[app.id] = app;
+                const profile = profilesData[index];
                 if (profile) {
-                    profileMap.set(app.profileId, profile);
+                    newProfiles[app.profileId] = profile;
                 }
-            }
-            setProfiles(profileMap);
+                // Ensure status is valid and column exists
+                const status = app.status as Application['status'];
+                if (newColumns[status]) {
+                    newColumns[status].applicantIds.push(app.id);
+                } else {
+                    // Fallback for unknown statuses
+                    newColumns['Submitted'].applicantIds.push(app.id);
+                }
+            });
+
+            setApplicants(newApplicants);
+            setProfiles(newProfiles);
+            setColumns(newColumns);
 
         } catch (error) {
             console.error("Failed to fetch applicants", error);
         } finally {
             setLoading(false);
         }
-    }, [jobId]);
+    }, [jobId, t]);
 
     useEffect(() => {
         fetchApplicants();
     }, [fetchApplicants]);
 
-    const handleStatusChange = async (applicationId: string, newStatus: Application['status']) => {
-        await api.updateApplicationStatus(applicationId, newStatus);
-        // We do an optimistic update, but can refetch if needed
-        // fetchApplicants();
-    };
+    const onDragEnd: OnDragEndResponder = async (result) => {
+        const { destination, source, draggableId } = result;
 
-    const handleDrop = (e: React.DragEvent<HTMLDivElement>, newStatus: Application['status']) => {
-        e.preventDefault();
-        const applicationId = e.dataTransfer.getData('applicationId');
-        setDraggedOverColumn(null);
-        if (applicationId) {
-            const movedApp = applicants.find(app => app.id === applicationId);
-            if(movedApp && movedApp.status !== newStatus){
-                // Optimistic UI update
-                setApplicants(prev => prev.map(app => app.id === applicationId ? { ...app, status: newStatus } : app));
-                // API call
-                handleStatusChange(applicationId, newStatus);
+        if (!destination) return;
+
+        if (destination.droppableId === source.droppableId && destination.index === source.index) return;
+
+        const startColumn = columns[source.droppableId];
+        const endColumn = columns[destination.droppableId];
+
+        // Keep a copy of the original state to revert on API error
+        const originalColumns = { ...columns };
+
+        if (startColumn === endColumn) {
+            const newApplicantIds = Array.from(startColumn.applicantIds);
+            newApplicantIds.splice(source.index, 1);
+            newApplicantIds.splice(destination.index, 0, draggableId);
+
+            const newColumn = { ...startColumn, applicantIds: newApplicantIds };
+            const newColumnsState = { ...columns, [newColumn.id]: newColumn };
+            setColumns(newColumnsState);
+        } else {
+            // Moving to a different column
+            const startApplicantIds = Array.from(startColumn.applicantIds);
+            startApplicantIds.splice(source.index, 1);
+            const newStartColumn = { ...startColumn, applicantIds: startApplicantIds };
+
+            const endApplicantIds = Array.from(endColumn.applicantIds);
+            endApplicantIds.splice(destination.index, 0, draggableId);
+            const newEndColumn = { ...endColumn, applicantIds: endApplicantIds };
+
+            // Optimistic UI update
+            const newColumnsState = {
+                ...columns,
+                [newStartColumn.id]: newStartColumn,
+                [newEndColumn.id]: newEndColumn,
+            };
+            setColumns(newColumnsState);
+
+            // API call to persist the change
+            try {
+                console.log(`[Kanban] Attempting to move application ${draggableId} to status ${destination.droppableId}`);
+                await api.updateApplicationStatus(draggableId, destination.droppableId as Application['status']);
+                console.log(`[Kanban] Successfully updated status for ${draggableId}`);
+            } catch (error) {
+                console.error("[Kanban] Failed to update application status. Reverting UI.", error);
+                // Revert state on error
+                setColumns(originalColumns);
             }
         }
     };
-    
-    const applicantsByStage = (status: Application['status']) => {
-        return applicants.filter(app => app.status === status);
-    };
-
-    const stageCounts = useMemo(() => {
-        return hiringStages.reduce((acc, stage) => {
-            acc[stage] = applicants.filter(app => app.status === stage).length;
-            return acc;
-        }, {} as Record<Application['status'], number>);
-    }, [applicants, hiringStages]);
 
     if (loading) return <p>{t('company.applicants.loading')}</p>;
     if (!job) return <p>{t('company.applicants.notFound')}</p>;
 
     return (
         <div>
-            <Link to="/company/jobs" className="text-primary hover:underline mb-4 inline-block">&larr; {t('company.applicants.back')}</Link>
+            <ReactRouterDOM.Link to="/company/jobs" className="text-primary hover:underline mb-4 inline-block">&larr; {t('company.applicants.back')}</ReactRouterDOM.Link>
             <h1 className="text-3xl font-bold text-gray-800">{t('company.applicants.kanbanTitle')}</h1>
-            <p className="text-gray-600 mb-6">{t('company.applicants.title')} {t_dynamic(job.title)} ({applicants.length} {t('company.applicants.total')})</p>
+            <p className="text-gray-600 mb-6">{t('company.applicants.title')} {job.title.es}</p>
 
-            <div className="mb-6 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                {hiringStages.map(stage => (
-                    <StatCard key={stage} title={t(`status.${stage}`)} count={stageCounts[stage]} />
-                ))}
-            </div>
+            <DragDropContext onDragEnd={onDragEnd}>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-5">
+                    {columnOrder.map(columnId => {
+                        const column = columns[columnId];
+                        if (!column) return null; // Safeguard if a column is unexpectedly missing
+                        const columnApplicants = column.applicantIds.map(appId => applicants[appId]);
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                {hiringStages.map(stage => (
-                    <div
-                        key={stage}
-                        onDragOver={(e) => { e.preventDefault(); setDraggedOverColumn(stage); }}
-                        onDragLeave={() => setDraggedOverColumn(null)}
-                        onDrop={(e) => handleDrop(e, stage)}
-                        className={`p-3 rounded-lg bg-gray-100/80 transition-colors duration-300 ${draggedOverColumn === stage ? 'bg-primary/10' : ''}`}
-                    >
-                        <h3 className="font-bold text-gray-700 pb-2 border-b mb-4 flex justify-between items-center text-sm uppercase tracking-wider">
-                            {t(`status.${stage}`)}
-                            <span className="bg-gray-200 text-gray-600 text-xs font-semibold px-2 py-1 rounded-full" title={t('company.applicants.totalInStage')}>{applicantsByStage(stage).length}</span>
-                        </h3>
-                        <div className="min-h-[400px] space-y-3">
-                            {applicantsByStage(stage).map(app => {
-                                const profile = profiles.get(app.profileId);
-                                if (!profile) return null;
-                                return (
-                                    <ApplicantCard
-                                        key={app.id}
-                                        application={app}
-                                        profile={profile}
-                                        linkPrefix="/company"
-                                    />
-                                );
-                            })}
-                        </div>
-                    </div>
-                ))}
-            </div>
+                        return (
+                            <Droppable key={column.id} droppableId={column.id}>
+                                {(provided, snapshot) => (
+                                    <div
+                                        ref={provided.innerRef}
+                                        {...provided.droppableProps}
+                                        className={`p-3 rounded-lg bg-gray-100 transition-colors duration-200 ${snapshot.isDraggingOver ? 'bg-primary/10' : ''}`}
+                                    >
+                                        <h3 className="font-bold text-gray-700 pb-2 border-b mb-4 flex justify-between items-center text-sm uppercase tracking-wider">
+                                            {column.title}
+                                            <span className="bg-gray-200 text-gray-600 text-xs font-semibold px-2 py-1 rounded-full">{column.applicantIds.length}</span>
+                                        </h3>
+                                        <div className="min-h-[600px] space-y-3">
+                                            {columnApplicants.map((app, index) => {
+                                                if (!app) return null; // Safeguard if an applicant is unexpectedly missing
+                                                const profile = profiles[app.profileId];
+                                                if (!profile) return null;
+                                                return (
+                                                    <Draggable key={app.id} draggableId={app.id} index={index}>
+                                                        {(provided, snapshot) => (
+                                                            <div
+                                                                ref={provided.innerRef}
+                                                                {...provided.draggableProps}
+                                                                {...provided.dragHandleProps}
+                                                                className={`shadow-sm ${snapshot.isDragging ? 'ring-2 ring-primary' : ''}`}
+                                                            >
+                                                                <ApplicantCard application={app} profile={profile} linkPrefix="/company" />
+                                                            </div>
+                                                        )}
+                                                    </Draggable>
+                                                );
+                                            })}
+                                            {provided.placeholder}
+                                        </div>
+                                    </div>
+                                )}
+                            </Droppable>
+                        );
+                    })}
+                </div>
+            </DragDropContext>
         </div>
     );
 };

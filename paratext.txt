@@ -1,0 +1,45 @@
+cat > cloudbuild.yaml << EOF
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t',
+    'us-central1-docker.pkg.dev/hybrid-sentry-472404-f1/ditalent-repo/ditalent-backend:latest', './backend',
+    '-f', './backend/Dockerfile']
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push',
+    'us-central1-docker.pkg.dev/hybrid-sentry-472404-f1/ditalent-repo/ditalent-backend:latest']
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t',
+    'us-central1-docker.pkg.dev/hybrid-sentry-472404-f1/ditalent-repo/ditalent-frontend:latest', '.', '-f',
+    'Dockerfile']
+  env:
+    - 'VITE_API_URL=https://ditalent-backend-xxxxxxxx-uc.a.run.app'
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push',
+    'us-central1-docker.pkg.dev/hybrid-sentry-472404-f1/ditalent-repo/ditalent-frontend:latest']
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  entrypoint: gcloud
+  args:
+    - 'run'
+    - 'deploy'
+    - 'ditalent-backend'
+    - '--image=us-central1-docker.pkg.dev/hybrid-sentry-472404-f1/ditalent-repo/ditalent-backend:latest'
+    - '--region=us-central1'
+    - '--platform=managed'
+    - '--allow-unauthenticated'
+    - '--port=8080'
+    - '--set-secrets=DATABASE_URL=DATABASE_URL:latest'
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  entrypoint: gcloud
+  args:
+    - 'run'
+    - 'deploy'
+    - 'ditalent-frontend'
+    - '--image=us-central1-docker.pkg.dev/hybrid-sentry-472404-f1/ditalent-repo/ditalent-frontend:latest'
+    - '--region=us-central1'
+    - '--platform=managed'
+    - '--allow-unauthenticated'
+
+images:
+  - 'us-central1-docker.pkg.dev/hybrid-sentry-472404-f1/ditalent-repo/ditalent-backend:latest'
+  - 'us-central1-docker.pkg.dev/hybrid-sentry-472404-f1/ditalent-repo/ditalent-frontend:latest'
+EOF

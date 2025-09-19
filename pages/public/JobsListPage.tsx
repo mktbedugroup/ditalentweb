@@ -18,9 +18,16 @@ const JobsListPage: React.FC = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   
-  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
-  const [locationFilter, setLocationFilter] = useState(searchParams.get('location') || '');
-  const [areaFilter, setAreaFilter] = useState(searchParams.get('area') || '');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [locationFilter, setLocationFilter] = useState('');
+  const [areaFilter, setAreaFilter] = useState('');
+
+  // New useEffect to update state when searchParams change
+  useEffect(() => {
+    setSearchTerm(searchParams.get('search') || '');
+    setLocationFilter(searchParams.get('location') || '');
+    setAreaFilter(searchParams.get('area') || '');
+  }, [searchParams]);
 
   const [uniqueLocations, setUniqueLocations] = useState<string[]>([]);
   
@@ -39,9 +46,9 @@ const JobsListPage: React.FC = () => {
         onlyActive: true,
         page: currentPage,
         limit: JOBS_PER_PAGE,
-        searchTerm: searchTerm,
-        location: locationFilter,
-        professionalArea: areaFilter,
+        searchTerm: searchParams.get('search') || '',
+        location: searchParams.get('location') || '',
+        professionalArea: searchParams.get('area') || '',
       });
       setJobs(jobsResponse.jobs);
       setTotalJobs(jobsResponse.total);
@@ -50,7 +57,7 @@ const JobsListPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, searchTerm, locationFilter, areaFilter]);
+  }, [currentPage, searchParams]);
 
   useEffect(() => {
     fetchJobs();
@@ -73,13 +80,28 @@ const JobsListPage: React.FC = () => {
   
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    applyFilters(searchTerm, locationFilter, areaFilter);
+  };
+
+  const applyFilters = useCallback((newSearchTerm: string, newLocationFilter: string, newAreaFilter: string) => {
     setCurrentPage(1);
     const params = new URLSearchParams();
-    if(searchTerm) params.set('search', searchTerm);
-    if(locationFilter) params.set('location', locationFilter);
-    if(areaFilter) params.set('area', areaFilter);
+    if(newSearchTerm) params.set('search', newSearchTerm);
+    if(newLocationFilter) params.set('location', newLocationFilter);
+    if(newAreaFilter) params.set('area', newAreaFilter);
     setSearchParams(params);
-    // fetchJobs will be triggered by the state changes
+  }, [setSearchParams]);
+
+  const handleLocationChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newLocation = e.target.value;
+    setLocationFilter(newLocation);
+    applyFilters(searchTerm, newLocation, areaFilter);
+  };
+
+  const handleAreaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newArea = e.target.value;
+    setAreaFilter(newArea);
+    applyFilters(searchTerm, locationFilter, newArea);
   };
 
   return (
@@ -104,7 +126,7 @@ const JobsListPage: React.FC = () => {
                     <select
                         className="p-3 border border-gray-300 rounded-md focus:ring-primary focus:border-primary bg-white text-gray-900"
                         value={locationFilter}
-                        onChange={(e) => setLocationFilter(e.target.value)}
+                        onChange={handleLocationChange}
                         aria-label="Filter by location"
                     >
                         <option value="">{t('home.allLocations')}</option>
@@ -113,7 +135,7 @@ const JobsListPage: React.FC = () => {
                     <select
                         className="p-3 border border-gray-300 rounded-md focus:ring-primary focus:border-primary bg-white text-gray-900"
                         value={areaFilter}
-                        onChange={(e) => setAreaFilter(e.target.value)}
+                        onChange={handleAreaChange}
                         aria-label="Filter by area"
                     >
                         <option value="">{t('home.allAreas')}</option>

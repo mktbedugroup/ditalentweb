@@ -1,9 +1,9 @@
 import type { Job, Company, User, CandidateProfile, Application, Service, TeamMember, Testimonial, BlogPost, Resource, Banner, SiteSettings, ContactSubmission, Conversation, Message, CVSubmission, SubscriptionPlan, Role, PopupAd } from '../types';
 import type { CompanyRegistrationData } from '../contexts/AuthContext';
 
-const API_BASE_URL = 'http://localhost:8088/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
 
-async function fetchApi(path: string, options: RequestInit = {}) {
+async function fetchApi(path: string, options: RequestInit & { responseType?: 'json' | 'blob' } = {}) {
     try {
         const token = sessionStorage.getItem('token');
         const headers: HeadersInit = {
@@ -22,6 +22,10 @@ async function fetchApi(path: string, options: RequestInit = {}) {
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ message: 'An unknown API error occurred' }));
             throw new Error(errorData.message || 'API request failed');
+        }
+
+        if (options.responseType === 'blob') {
+            return response.blob(); // Return blob directly
         }
 
         const contentType = response.headers.get("content-type");
@@ -54,9 +58,18 @@ export const api = {
   },
 
   // Jobs
-  getJobs: async (params: { page?: number; limit?: number; isInternal?: boolean; onlyActive?: boolean; searchTerm?: string; location?: string; professionalArea?: string; companyId?: string; status?: Job['status']; } = {}): Promise<{ jobs: Job[]; total: number }> => {
-    const query = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== '').map(([key, value]) => [key, String(value)])).toString();
-    return fetchApi(`/jobs?${query}`);
+  getJobs: async (params: { page?: number; limit?: number; isInternal?: boolean; onlyActive?: boolean; searchTerm?: string; location?: string | string[]; professionalArea?: string | string[]; companyId?: string; status?: Job['status']; } = {}): Promise<{ jobs: Job[]; total: number }> => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        if (Array.isArray(value)) {
+          value.forEach(v => query.append(key, v));
+        } else {
+          query.append(key, String(value));
+        }
+      }
+    });
+    return fetchApi(`/jobs?${query.toString()}`);
   },
   getAllJobs: async (): Promise<Job[]> => {
      const response = await fetchApi('/jobs/all');
@@ -105,6 +118,15 @@ export const api = {
     return fetchApi(`/companies/${companyId}`, { method: 'DELETE' });
   },
 
+  // Admin
+  getCompaniesAnalytics: async (params: { location?: string } = {}): Promise<any[]> => {
+    const query = new URLSearchParams(params as any).toString();
+    return fetchApi(`/admin/companies-analytics?${query}`);
+  },
+  getDashboardStats: async (): Promise<any> => {
+    return fetchApi('/admin/dashboard-stats');
+  },
+
   // Users
   getUsers: async (): Promise<User[]> => {
     return fetchApi('/users');
@@ -118,6 +140,9 @@ export const api = {
   },
   deleteUser: async (userId: string): Promise<{ success: boolean }> => {
     return fetchApi(`/users/${userId}`, { method: 'DELETE' });
+  },
+  updateUserStatus: async (userId: string, isActive: boolean): Promise<User> => {
+    return fetchApi(`/users/${userId}/status`, { method: 'PUT', body: JSON.stringify({ isActive }) });
   },
 
   // Roles
@@ -168,6 +193,10 @@ export const api = {
   },
   getApplicantsByJobId: async (jobId: string): Promise<Application[]> => {
       return fetchApi(`/applications/job/${jobId}`);
+  },
+  downloadJobApplicantsExcel: async (jobId: string): Promise<Blob> => {
+    const response = await fetchApi(`/jobs/${jobId}/applicants/excel`, { responseType: 'blob' });
+    return response;
   },
   updateApplicationStatus: async (applicationId: string, status: Application['status']): Promise<Application | null> => {
       return fetchApi(`/applications/${applicationId}/status`, { method: 'PUT', body: JSON.stringify({ status }) });
@@ -228,11 +257,13 @@ export const api = {
 
   // Contact Submissions
   getContactSubmissions: async (): Promise<ContactSubmission[]> => fetchApi('/contact-submissions'),
-  saveContactSubmission: async (data: Omit<ContactSubmission, 'id' | 'submittedAt'>): Promise<ContactSubmission> => fetchApi('/contact-submissions', { method: 'POST', body: JSON.stringify(data) }),
+  saveContactSubmission: async (data: Omit<ContactSubmission, 'id' | 'submittedAt' | 'status'>): Promise<ContactSubmission> => fetchApi('/contact-submissions', { method: 'POST', body: JSON.stringify(data) }),
+  updateContactSubmissionStatus: async (id: string, status: string): Promise<ContactSubmission> => fetchApi(`/contact-submissions/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
 
   // CV Submissions
   getCvSubmissions: async (): Promise<CVSubmission[]> => fetchApi('/cv-submissions'),
-  saveCvSubmission: async (data: Omit<CVSubmission, 'id' | 'submittedAt'>): Promise<CVSubmission> => fetchApi('/cv-submissions', { method: 'POST', body: JSON.stringify(data) }),
+  saveCvSubmission: async (data: Omit<CVSubmission, 'id' | 'submittedAt' | 'isRead'>): Promise<CVSubmission> => fetchApi('/cv-submissions', { method: 'POST', body: JSON.stringify(data) }),
+  markCvAsRead: async (id: string): Promise<CVSubmission> => fetchApi(`/cv-submissions/${id}/read`, { method: 'PUT' }),
   
   // Popup Ads
   getPopupAds: async (): Promise<PopupAd[]> => fetchApi('/popups'),
@@ -241,5 +272,19 @@ export const api = {
   getActivePopupsForRoute: async (route: string, device: 'desktop' | 'mobile', userRole: User['role'] | 'guest'): Promise<PopupAd[]> => {
       const query = new URLSearchParams({ route, device, userRole }).toString();
       return fetchApi(`/popups/active?${query}`);
+  },
+
+  // Newsletter
+  subscribeToNewsletter: async (email: string): Promise<{ message: string }> => {
+    return fetchApi('/newsletter/subscribe', { method: 'POST', body: JSON.stringify({ email }) });
+  },
+  getNewsletterSubscribers: async (): Promise<NewsletterSubscriber[]> => {
+    return fetchApi('/newsletter/subscribers');
+  },
+  downloadNewsletterSubscribersExcel: async (): Promise<Blob> => {
+    return fetchApi('/newsletter/subscribers/excel', { responseType: 'blob' });
+  },
+  sendNewsletterCampaign: async (campaignData: { subject: string; content: string }): Promise<{ message: string }> => {
+    return fetchApi('/newsletter/send', { method: 'POST', body: JSON.stringify(campaignData) });
   },
 };

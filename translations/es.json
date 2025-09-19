@@ -115,7 +115,15 @@
   "services": {
     "title": "Nuestros Servicios",
     "subtitle": "Ofrecemos una gama completa de soluciones de recursos humanos para potenciar el crecimiento de su empresa y el desarrollo profesional de los candidatos.",
-    "loading": "Cargando servicios..."
+    "loading": "Cargando servicios...",
+    "heroDescription": "Descubre cómo nuestras soluciones personalizadas pueden impulsar tu éxito profesional y el de tu empresa.",
+    "requestServiceCta": "Solicitar un Servicio",
+    "newsletterTitle": "Mantente al día con nuestras novedades",
+    "newsletterSubtitle": "Suscríbete a nuestro boletín para recibir las últimas noticias, ofertas y consejos directamente en tu bandeja de entrada.",
+    "newsletterPlaceholder": "Introduce tu correo electrónico",
+    "newsletterCta": "Suscribirse",
+    "newsletterSuccess": "¡Gracias por suscribirte! Revisa tu bandeja de entrada para confirmar.",
+    "newsletterError": "Error al suscribirse al boletín. Por favor, inténtalo de nuevo."
   },
   "resources": {
     "title": "Recursos",
@@ -185,6 +193,7 @@
       "roles": "Roles y Permisos",
       "contactForms": "Formularios",
       "cvSubmissions": "CVs Recibidos",
+      "newsletter": "Newsletter",
       "content": "Contenido",
       "homepageBanner": "Banners",
       "popups": "Anuncios Pop-up",
@@ -217,7 +226,9 @@
       "addCompany": "Añadir Empresa",
       "manageContent": "Gestionar Contenido",
       "recentSubmissions": "Envíos Recientes",
-      "viewAllSubmissions": "Ver todos los envíos"
+      "viewAllSubmissions": "Ver todos los envíos",
+      "newCvSubmissions": "Nuevos CVs Recibidos",
+      "newContactSubmissions": "Nuevos Mensajes de Contacto"
     },
     "analytics": {
       "title": "Reportes y Analíticas",
@@ -266,11 +277,19 @@
         "addRequirement": "Añadir Requisito",
         "isInternal": "Vacante Interna (para la página de carreras de Ditalent)",
         "cancel": "Cancelar",
-        "save": "Guardar"
+        "save": "Guardar",
+        "dropdown": {
+          "restart": "Reiniciar",
+          "stop": "Detener",
+          "hide": "Ocultar",
+          "publish": "Publicar",
+          "excel": "Descargar Excel"
+        }
       }
     },
     "companies": {
       "title": "Gestionar Empresas",
+      "dashboardTitle": "Dashboard de Empresas",
       "add": "Añadir Empresa",
       "logo": "Logo",
       "name": "Nombre",
@@ -283,6 +302,16 @@
       "plan": "Plan",
       "noPlan": "Sin Plan",
       "changePlan": "Cambiar Plan",
+      "registrationDate": "Fecha de Registro",
+      "jobPosts": "Vacantes",
+      "location": "Ubicación",
+      "filterByLocation": "Filtrar por ubicación...",
+      "filter": "Filtrar",
+      "kpi": {
+          "totalCompanies": "Total de Empresas",
+          "totalJobs": "Total de Vacantes",
+          "proCompanies": "Empresas en Plan Pro"
+      },
       "form": {
         "name": "Nombre de la Empresa",
         "logo": "Logo",
@@ -342,24 +371,53 @@
     },
     "submissions": {
       "title": "Envíos del Formulario de Contacto",
+      "description": "Gestiona los mensajes y consultas enviadas a través del formulario de contacto.",
       "loading": "Cargando envíos...",
       "noSubmissions": "No hay envíos todavía.",
       "date": "Fecha",
       "name": "Nombre",
       "email": "Email",
       "subject": "Asunto",
-      "message": "Mensaje"
+      "message": "Mensaje",
+      "status": "Estado",
+      "actions": "Acciones",
+      "searchPlaceholder": "Buscar por nombre, email, asunto...",
+      "filterAll": "Todos los estados",
+      "statuses": {
+        "New": "Nuevo",
+        "In Progress": "En Progreso",
+        "Resolved": "Resuelto"
+      },
+      "viewDetails": "Ver",
+      "modalTitle": "Detalles del Mensaje"
     },
     "cvSubmissions": {
       "title": "CVs Recibidos Espontáneamente",
+      "description": "Gestiona los currículums enviados de forma espontánea por los candidatos.",
       "loading": "Cargando envíos...",
       "noSubmissions": "No se han recibido CVs todavía.",
       "date": "Fecha",
       "name": "Nombre",
       "email": "Email",
+      "subject": "Asunto",
       "fileName": "Nombre del Archivo",
       "actions": "Acciones",
-      "download": "Descargar CV"
+      "download": "Descargar",
+      "read": "Leído",
+      "unread": "No Leído",
+      "searchPlaceholder": "Buscar por nombre, email, asunto...",
+      "filterAll": "Todos",
+      "filterUnread": "No Leídos",
+      "filterRead": "Leídos",
+      "downloadSelected": "Descargar Seleccionados"
+    },
+    "newsletter": {
+      "title": "Gestionar Suscriptores del Boletín",
+      "description": "Visualiza y gestiona los correos electrónicos de los suscriptores de tu boletín.",
+      "loading": "Cargando suscriptores...",
+      "noSubscribers": "No hay suscriptores registrados todavía.",
+      "tableEmail": "Correo Electrónico",
+      "tableSubscribedAt": "Fecha de Suscripción"
     },
     "services": {
         "title": "Gestionar Servicios",
@@ -620,6 +678,10 @@
         "stripeSecretKey": "Clave Secreta de Stripe",
         "paypalClientId": "ID de Cliente de PayPal",
         "paypalClientSecret": "Secreto de Cliente de PayPal",
+        "emailConfigTitle": "Configuración de Envío de Correo",
+        "emailProvider": "Proveedor",
+        "emailFrom": "Email Remitente",
+        "emailApiKey": "Clave de API",
         "footerContent": "Contenido del Pie de Página",
         "copyrightText": "Texto de Copyright",
         "footerLinks": "Enlaces del Pie de Página",
@@ -897,7 +959,8 @@
         "submit": "Enviar"
     },
     "day": "día",
-    "days": "días"
+    "days": "días",
+    "close": "Cerrar"
   },
   "status": {
     "Submitted": "Recibido",

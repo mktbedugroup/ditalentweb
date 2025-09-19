@@ -349,6 +349,7 @@ export interface SiteSettings {
     enableLanguageSwitcher: boolean;
     availableLanguages: ('es' | 'en' | 'fr')[];
     defaultLanguage: 'es' | 'en' | 'fr';
+    availableLocations: string[];
 }
 
 export interface PopupAd {

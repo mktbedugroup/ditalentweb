@@ -311,6 +311,12 @@ export interface CVSubmission {
     submittedAt: string;
 }
 
+export interface NewsletterSubscriber {
+    id: string;
+    email: string;
+    subscribedAt: string;
+}
+
 export interface FooterLink {
   id: string;
   title: MultilingualString;
@@ -353,6 +359,8 @@ export interface PopupAd {
   id: string;
   name: string;
   isActive: boolean;
+  redirectUrl?: string;
+  openInNewTab?: boolean; // Nuevo campo
   
   content: {
     imageUrl: string;

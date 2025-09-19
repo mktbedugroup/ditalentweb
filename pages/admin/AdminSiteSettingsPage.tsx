@@ -54,7 +54,16 @@ const DynamicListManager: React.FC<{
 
 
 const AdminSiteSettingsPage: React.FC = () => {
-    const [settings, setSettings] = useState<Partial<SiteSettings>>({ jobTypes: [], educationLevels: [], footerLinks: [], paymentGateways: { stripe: { publicKey: '', secretKey: '' }, paypal: { clientId: '', clientSecret: '' } }, availableLanguages: [], defaultLanguage: 'es', availableLocations: [] });
+    const [settings, setSettings] = useState<Partial<SiteSettings>>({ 
+        jobTypes: [], 
+        educationLevels: [], 
+        footerLinks: [], 
+        paymentGateways: { stripe: { publicKey: '', secretKey: '' }, paypal: { clientId: '', clientSecret: '' } }, 
+        availableLanguages: [], 
+        defaultLanguage: 'es', 
+        availableLocations: [],
+        emailSettings: { provider: 'none', apiKey: '', fromEmail: '' }
+    });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
@@ -63,7 +72,12 @@ const AdminSiteSettingsPage: React.FC = () => {
     useEffect(() => {
         setLoading(true);
         api.getSiteSettings()
-            .then(data => setSettings(data || { jobTypes: [], educationLevels: [], footerLinks: [], paymentGateways: { stripe: { publicKey: '', secretKey: '' }, paypal: { clientId: '', clientSecret: '' } }, availableLanguages: [], defaultLanguage: 'es' }))
+            .then(data => {
+                if (!data.emailSettings) {
+                    data.emailSettings = { provider: 'none', apiKey: '', fromEmail: '' };
+                }
+                setSettings(data || {});
+            })
             .finally(() => setLoading(false));
     }, []);
 
@@ -92,6 +106,15 @@ const AdminSiteSettingsPage: React.FC = () => {
                     }
                 } as any
             }));
+        } else if (name.startsWith('emailSettings.')) {
+            const [, key] = name.split('.');
+            setSettings(prev => ({
+                ...prev,
+                emailSettings: {
+                    ...(prev.emailSettings || {}),
+                    [key]: value
+                }
+            }));
         } else {
             setSettings(prev => ({ ...prev, [name]: value }));
         }
@@ -101,7 +124,7 @@ const AdminSiteSettingsPage: React.FC = () => {
         setSettings(prev => ({...prev, [fieldName]: value}));
     }
 
-    const handleListChange = (listName: 'jobTypes' | 'educationLevels', newItems: string[]) => {
+    const handleListChange = (listName: 'jobTypes' | 'educationLevels' | 'availableLocations', newItems: string[]) => {
         setSettings(prev => ({ ...prev, [listName]: newItems }));
     };
 
@@ -161,9 +184,7 @@ const AdminSiteSettingsPage: React.FC = () => {
             setMessage(t('admin.settings.successMsg'));
             setTimeout(() => {
               setMessage('');
-              // Force a reload to apply new language settings globally
-              window.location.reload();
-            }, 1500);
+            }, 2500);
         } catch (error) {
             setMessage(t('admin.settings.errorMsg'));
         } finally {
@@ -301,6 +322,34 @@ const AdminSiteSettingsPage: React.FC = () => {
                                     <label htmlFor="contactLongitude" className="block text-sm font-medium text-gray-700">{t('admin.settings.longitude')}</label>
                                     <input type="number" step="any" id="contactLongitude" name="contactLongitude" value={settings.contactLongitude || ''} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900" />
                                 </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Email Settings Section */}
+                    <section className="pt-6 first:pt-0">
+                        <h2 className="text-xl font-semibold text-gray-700 pb-2 mb-4">{t('admin.settings.emailConfigTitle', 'Configuración de Envío de Correo')}</h2>
+                        <div className="space-y-4 p-4 border rounded-md bg-gray-50">
+                            <div>
+                                <label htmlFor="emailProvider" className="block text-sm font-medium text-gray-700">{t('admin.settings.emailProvider', 'Proveedor')}</label>
+                                <select 
+                                    id="emailProvider" 
+                                    name="emailSettings.provider" 
+                                    value={settings.emailSettings?.provider || 'none'} 
+                                    onChange={handleChange} 
+                                    className="mt-1 block w-full max-w-xs border border-gray-300 rounded-md p-2 bg-white text-gray-900"
+                                >
+                                    <option value="none">Ninguno (Envío desactivado)</option>
+                                    <option value="sendgrid">SendGrid</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label htmlFor="fromEmail" className="block text-sm font-medium text-gray-700">{t('admin.settings.emailFrom', 'Email Remitente')}</label>
+                                <input type="email" id="fromEmail" name="emailSettings.fromEmail" value={settings.emailSettings?.fromEmail || ''} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900" placeholder="newsletter@ejemplo.com" />
+                            </div>
+                            <div>
+                                <label htmlFor="apiKey" className="block text-sm font-medium text-gray-700">{t('admin.settings.emailApiKey', 'Clave de API')}</label>
+                                <input type="password" id="apiKey" name="emailSettings.apiKey" value={settings.emailSettings?.apiKey || ''} onChange={handleChange} className="mt-1 block w-full border border-gray-300 rounded-md p-2 bg-white text-gray-900" />
                             </div>
                         </div>
                     </section>

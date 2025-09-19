@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import { Card } from '../../components/common/Card';
+import { BannerCarousel } from '../../components/common/BannerCarousel'; // Import BannerCarousel
 import { api } from '../../services/api';
-import type { TeamMember, SiteSettings } from '../../types';
+import type { TeamMember, SiteSettings, Banner } from '../../types'; // Import Banner type
 import { useI18n } from '../../contexts/I18nContext';
 
 const AboutPage: React.FC = () => {
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [settings, setSettings] = useState<SiteSettings | null>(null);
+  const [banner, setBanner] = useState<Banner | null>(null); // Add state for banner
   const [loading, setLoading] = useState(true);
   const { t, t_dynamic } = useI18n();
 
@@ -16,12 +18,16 @@ const AboutPage: React.FC = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [teamData, settingsData] = await Promise.all([
+            const [teamData, settingsData, bannersData] = await Promise.all([
                 api.getTeamMembers(),
                 api.getSiteSettings(),
+                api.getBannersByLocation('about_page'), // Fetch banners for 'about_page'
             ]);
             setTeam(teamData);
             setSettings(settingsData);
+            if (bannersData.length > 0) {
+                setBanner(bannersData[0]); // Assuming you want to display the first banner if multiple are returned
+            }
         } catch (error) {
             console.error("Failed to fetch page data", error);
         } finally {
@@ -41,6 +47,7 @@ const AboutPage: React.FC = () => {
     <div className="flex flex-col min-h-screen bg-gray-50">
       <Header />
       <main className="flex-grow">
+        {banner && <BannerCarousel banner={banner} />} {/* Render BannerCarousel if banner exists */}
         {/* Hero Section */}
         <div className="bg-white">
             <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8 text-center">

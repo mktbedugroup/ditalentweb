@@ -75,9 +75,10 @@ async function main() {
 
     // Seed Candidate Profiles
     for (const profile of MOCK_PROFILES) {
+        const { blockedCompanyIds, ...profileData } = profile as any;
         await prisma.candidateProfile.create({
             data: {
-                ...profile,
+                ...profileData,
                 academicLife: profile.academicLife as any,
                 courses: profile.courses as any,
                 workLife: profile.workLife as any,
@@ -86,6 +87,9 @@ async function main() {
                 volunteerExperience: profile.volunteerExperience as any,
                 references: profile.references as any,
                 socialLinks: profile.socialLinks as any,
+                blockedCompanies: {
+                    connect: blockedCompanyIds ? blockedCompanyIds.map((id: string) => ({ id })) : []
+                }
             } as any,
         });
     }
@@ -103,9 +107,10 @@ async function main() {
 
     // Seed Applications
     for (const app of MOCK_APPLICATIONS) {
+        const { candidateId, ...appData } = app as any;
         await prisma.application.create({
             data: {
-                ...app,
+                ...appData,
                 appliedDate: new Date(app.appliedDate),
                 conversationId: null, // Will link later
             } as any,

@@ -64,6 +64,7 @@ export const PopupManager: React.FC = () => {
 
         const fetchAndSetPopups = async () => {
             const popups = await api.getActivePopupsForRoute(location.pathname, deviceType, userRole);
+            console.log('Fetched popups:', popups);
             const listeners: (() => void)[] = [];
 
             for (const popup of popups) {

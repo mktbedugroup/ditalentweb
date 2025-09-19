@@ -554,6 +554,7 @@ export const MOCK_SITE_SETTINGS: SiteSettings = {
     enableLanguageSwitcher: true,
     availableLanguages: ['es', 'en', 'fr'],
     defaultLanguage: 'es',
+    availableLocations: [],
 };
 
 export const MOCK_CONTACT_SUBMISSIONS: ContactSubmission[] = [

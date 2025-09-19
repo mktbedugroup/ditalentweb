@@ -32,6 +32,7 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ initialValue = '',
     if (file) {
       try {
         const base64 = await fileToBase64(file);
+        console.log('Base64 string length:', base64.length);
         setPreview(base64);
         onValueChange(base64);
         setUrlInput(''); // Clear URL input if a file is uploaded

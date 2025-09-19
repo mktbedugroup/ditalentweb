@@ -185,6 +185,7 @@
       "roles": "Rôles & Permissions",
       "contactForms": "Formulaires",
       "cvSubmissions": "CV Reçus",
+      "newsletter": "Newsletter",
       "content": "Contenu",
       "homepageBanner": "Bannières",
       "popups": "Publicités Pop-up",
@@ -217,7 +218,9 @@
       "addCompany": "Ajouter une Entreprise",
       "manageContent": "Gérer le Contenu",
       "recentSubmissions": "Soumissions Récentes",
-      "viewAllSubmissions": "Voir toutes les soumissions"
+      "viewAllSubmissions": "Voir toutes les soumissions",
+      "newCvSubmissions": "Nouveaux CV Reçus",
+      "newContactSubmissions": "Nouveaux Messages de Contact"
     },
     "analytics": {
       "title": "Rapports & Analyses",
@@ -266,11 +269,19 @@
         "addRequirement": "Ajouter une Exigence",
         "isInternal": "Offre Interne (pour la page carrières de Ditalent)",
         "cancel": "Annuler",
-        "save": "Enregistrer"
+        "save": "Enregistrer",
+        "dropdown": {
+          "restart": "Redémarrer",
+          "stop": "Arrêter",
+          "hide": "Masquer",
+          "publish": "Publier",
+          "excel": "Télécharger Excel"
+        }
       }
     },
     "companies": {
       "title": "Gérer les Entreprises",
+      "dashboardTitle": "Tableau de Bord des Entreprises",
       "add": "Ajouter une Entreprise",
       "logo": "Logo",
       "name": "Nom",
@@ -283,6 +294,16 @@
       "plan": "Forfait",
       "noPlan": "Aucun Forfait",
       "changePlan": "Changer de Forfait",
+      "registrationDate": "Date d'Inscription",
+      "jobPosts": "Offres",
+      "location": "Emplacement",
+      "filterByLocation": "Filtrer par emplacement...",
+      "filter": "Filtrer",
+      "kpi": {
+          "totalCompanies": "Total des Entreprises",
+          "totalJobs": "Total des Offres",
+          "proCompanies": "Entreprises sur Forfait Pro"
+      },
       "form": {
         "name": "Nom de l'Entreprise",
         "logo": "Logo",
@@ -342,24 +363,45 @@
     },
     "submissions": {
       "title": "Soumissions du Formulaire de Contact",
+      "description": "Gérez les messages et les demandes envoyés via le formulaire de contact.",
       "loading": "Chargement des soumissions...",
       "noSubmissions": "Aucune soumission pour le moment.",
       "date": "Date",
       "name": "Nom",
       "email": "Email",
       "subject": "Sujet",
-      "message": "Message"
+      "message": "Message",
+      "status": "Statut",
+      "actions": "Actions",
+      "searchPlaceholder": "Rechercher par nom, email, sujet...",
+      "filterAll": "Tous les statuts",
+      "statuses": {
+        "New": "Nouveau",
+        "In Progress": "En Cours",
+        "Resolved": "Résolu"
+      },
+      "viewDetails": "Voir",
+      "modalTitle": "Détails du Message"
     },
     "cvSubmissions": {
       "title": "Soumissions Spontanées de CV",
+      "description": "Gérez les CV envoyés spontanément par les candidats.",
       "loading": "Chargement des soumissions...",
       "noSubmissions": "Aucune soumission de CV pour le moment.",
       "date": "Date",
       "name": "Nom",
       "email": "Email",
+      "subject": "Sujet",
       "fileName": "Nom du Fichier",
       "actions": "Actions",
-      "download": "Télécharger le CV"
+      "download": "Télécharger",
+      "read": "Lu",
+      "unread": "Non Lu",
+      "searchPlaceholder": "Rechercher par nom, email, sujet...",
+      "filterAll": "Tous",
+      "filterUnread": "Non Lus",
+      "filterRead": "Lus",
+      "downloadSelected": "Télécharger la Sélection"
     },
     "services": {
         "title": "Gérer les Services",
@@ -620,6 +662,10 @@
         "stripeSecretKey": "Clé Secrète Stripe",
         "paypalClientId": "ID Client PayPal",
         "paypalClientSecret": "Secret Client PayPal",
+        "emailConfigTitle": "Configuration d'Envoi d'Email",
+        "emailProvider": "Fournisseur",
+        "emailFrom": "Email de l'expéditeur",
+        "emailApiKey": "Clé API",
         "footerContent": "Contenu du Pied de Page",
         "copyrightText": "Texte de Copyright",
         "footerLinks": "Liens du Pied de Page",
@@ -897,7 +943,8 @@
         "submit": "Envoyer"
     },
     "day": "jour",
-    "days": "jours"
+    "days": "jours",
+    "close": "Fermer"
   },
   "status": {
     "Submitted": "Soumis",

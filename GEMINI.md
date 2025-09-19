@@ -1,120 +1,364 @@
-# Guía de Implementación del Backend para Ditalent (Asistente AI)
+# Guía de Implementación y Estado del Proyecto - Ditalent (Asistente AI)
 
-**Objetivo:** Convertir el prototipo de React en una aplicación full-stack funcional, implementando un backend con Node.js/Express, conectándolo a una base de datos PostgreSQL a través de Prisma, y reemplazando la API simulada del frontend por llamadas reales.
+**Objetivo:** Evolucionar el prototipo a una aplicación full-stack funcional, corregir bugs y añadir nuevas funcionalidades para mejorar la plataforma.
 
 **Stack Tecnológico:**
-- **Backend:** Node.js, Express, TypeScript
-- **Base de Datos:** PostgreSQL
-- **ORM:** Prisma
-- **Entorno:** Docker
+- Backend: Node.js, Express, TypeScript
+- Base de Datos: MySQL
+- ORM: Prisma
+- Entorno: Docker
 
 ---
 
-### **Paso 1: Entorno y Base de Datos (Ya configurado)**
+### **Análisis y Propuestas de Mejora (14/09/2025)**
 
-El entorno de desarrollo está listo para ser levantado con Docker.
-
-1.  **Iniciar Entorno:** Ejecuta `docker-compose up --build` en la raíz del proyecto. Esto levantará los contenedores del backend y la base de datos.
-2.  **Aplicar Migración Inicial:** En una nueva terminal, ejecuta `docker-compose exec backend npm run prisma:migrate`. Prisma leerá `backend/prisma/schema.prisma` y creará todas las tablas y relaciones en la base de datos PostgreSQL. La base de datos estará lista para ser utilizada.
+Aquí tienes un análisis detallado de la aplicación y una serie de recomendaciones para mejorarla, tanto a nivel técnico como funcional.
 
 ---
 
-### **Paso 2: El Plan de Batalla - Conectar el Frontend**
+#### 1. Resumen General
 
-La tarea principal es reemplazar cada una de las funciones dentro del objeto `api` en `services/api.ts` con llamadas `fetch` a los nuevos endpoints del backend que vamos a crear.
+La aplicación es un portal de empleos full-stack con funcionalidades robustas para candidatos, empresas y administradores. El uso de un stack moderno (React/TypeScript, Node.js/Express, Prisma, MySQL) y Docker para la contenerización es una base excelente. El código está razonablemente bien estructurado, con una separación clara entre el frontend y el backend, y el uso de componentes reutilizables en React es una buena práctica.
 
-**Estrategia:**
-1.  **Define la URL Base:** En `services/api.ts`, establece `const API_BASE_URL = 'http://localhost:8080/api';`.
-2.  **Itera y Reemplaza:** Por cada función simulada (ej. `api.getJobs`), implementa su correspondiente endpoint en `backend/server.ts` y luego modifica la función en el frontend para que haga la llamada real a ese endpoint.
+Las recientes adiciones, como el dashboard de analíticas y la mejora en la gestión de CVs, demuestran un buen camino hacia una plataforma más completa.
 
 ---
 
-### **Paso 3: Guía de Implementación de Endpoints (Módulo por Módulo)**
+#### 2. Análisis del Backend (`/backend`)
 
-Aquí está el desglose de los endpoints que necesitas crear en `backend/server.ts`.
+**Puntos Fuertes:**
+*   **ORM y Migraciones:** El uso de Prisma simplifica enormemente la interacción con la base de datos y gestiona las migraciones de forma segura.
+*   **API Estructurada:** La API sigue un patrón RESTful y está organizada por módulos (auth, jobs, companies, etc.), lo cual es bueno para la mantenibilidad.
+*   **Validación:** El uso de Zod para la validación de esquemas en los endpoints de la API es una excelente práctica que aporta seguridad y robustez.
 
-#### **Módulo 1: Autenticación y Usuarios**
+**Áreas de Mejora:**
 
--   **`POST /api/auth/register`**
-    -   **Propósito:** Registrar un nuevo usuario (candidato o empresa).
-    -   **Body:** `{ email, password, role, companyData? }`
-    -   **Lógica Prisma:**
-        1.  Verifica si el email ya existe con `prisma.user.findUnique`. Si existe, devuelve error.
-        2.  (Opcional) Hashea la contraseña.
-        3.  Crea el usuario con `prisma.user.create`.
-        4.  Si `role` es 'candidate', crea un `CandidateProfile` vacío asociado.
-        5.  Si `role` es 'company', crea una `Company` con los `companyData` y asóciala.
-    -   **Respuesta (201):** El objeto del nuevo `User`.
+*   **Manejo de Errores:** El `asyncHandler` actual captura errores pero devuelve un mensaje genérico "Something went wrong!". Sería muy beneficioso tener un manejador de errores más sofisticado que pueda:
+    *   Distinguir entre errores esperados (ej. "Usuario no encontrado") y errores inesperados del servidor (500).
+    *   Registrar los errores con más detalle (stack trace, request body) en un sistema de logging (ej. Winston o Pino) para facilitar la depuración.
 
--   **`POST /api/auth/login`**
-    -   **Propósito:** Autenticar un usuario.
-    -   **Body:** `{ email, password }`
-    -   **Lógica Prisma:** Busca el usuario con `prisma.user.findUnique`. Verifica la contraseña.
-    -   **Respuesta (200):** El objeto del `User`. (En una app real, devolverías un token JWT).
+*   **Seguridad:**
+    *   **Autorización Detallada:** Actualmente, la autorización se basa en roles generales (`admin`, `company`). El modelo `Role` tiene un campo `permissions`, pero no parece estarse usando en el middleware `authorizeRoles`. Se debería implementar un sistema de permisos más granular para que un administrador pueda tener roles más específicos (ej. "Gestor de Contenido" vs "Super Admin").
+    *   **Dependencias:** Algunas dependencias podrían tener vulnerabilidades. Es recomendable ejecutar `npm audit` periódicamente y actualizar los paquetes.
+    *   **Secretos:** El `JWT_SECRET` está hardcodeado con un valor por defecto. Esto es un riesgo de seguridad. Se debería forzar su configuración a través de variables de entorno y quizás usar una librería como `dotenv` para gestionar un archivo `.env` en desarrollo.
 
--   **`GET /api/users`**, **`PUT /api/users/:id`**, **`DELETE /api/users/:id`**
-    -   **Propósito:** CRUD para la gestión de usuarios desde el panel de admin.
-    -   **Lógica Prisma:** Usa `findMany`, `update`, `delete` de `prisma.user`. Implementa protección para no poder eliminar al super-admin.
-
-#### **Módulo 2: Vacantes (Jobs)**
-
--   **`GET /api/jobs`**
-    -   **Propósito:** Obtener una lista paginada y filtrada de vacantes.
-    -   **Query Params:** `page`, `limit`, `searchTerm`, `location`, `professionalArea`, `companyId`, `status`, `isInternal`.
-    -   **Lógica Prisma:** Construye un objeto `where` dinámico para `prisma.job.findMany` basado en los query params. Usa `skip` y `take` para la paginación. Realiza un `prisma.job.count` con el mismo `where` para la paginación total.
-    -   **Respuesta (200):** `{ jobs: Job[], total: number }`.
-
--   **`GET /api/jobs/:id`**
-    -   **Propósito:** Obtener una vacante específica.
-    -   **Lógica Prisma:** `prisma.job.findUnique({ where: { id } })`.
-
--   **`POST /api/jobs`** y **`PUT /api/jobs/:id`**
-    -   **Propósito:** Crear o actualizar una vacante.
-    -   **Body:** El objeto de la vacante.
-    -   **Lógica Prisma:** Usa `prisma.job.create` o `prisma.job.update`. Para la creación, maneja la lógica de descontar créditos del plan de la empresa si no es un cliente de reclutamiento.
-
--   **`DELETE /api/jobs/:id`**
-    -   **Propósito:** Eliminar una vacante.
-    -   **Lógica Prisma:** `prisma.job.delete({ where: { id } })`.
-
-#### **Módulo 3: Empresas (Companies)**
-
--   Implementa los endpoints CRUD estándar: `GET /api/companies`, `GET /api/companies/:id`, `POST /api/companies`, `PUT /api/companies/:id`, `DELETE /api/companies/:id`.
--   Para `GET /api/companies`, implementa la lógica de búsqueda por nombre.
-
-#### **Módulo 4: Perfiles de Candidato (Profiles)**
-
--   **`GET /api/profiles/:userId`**: Obtiene el perfil de un candidato por el ID de usuario.
--   **`PUT /api/profiles/:profileId`**: Actualiza un perfil.
--   **`GET /api/candidates/search`**:
-    -   **Propósito:** Implementar la búsqueda de candidatos para empresas.
-    -   **Query Params:** `searchTerm`, `professionalArea`.
-    -   **Lógica Prisma:** Construye una cláusula `where` compleja que busque en `fullName`, `headline`, `summary`, `skills`, y filtre por `professionalAreas`.
-
-#### **Módulo 5: Contenido del Sitio (CMS)**
-
--   Para cada uno de estos módulos (`Services`, `TeamMembers`, `Testimonials`, `BlogPosts`, `Resources`, `Banners`, `PopupAds`, `SubscriptionPlans`, `SiteSettings`), implementa los endpoints CRUD correspondientes.
--   Ejemplo para Servicios: `GET /api/services`, `POST /api/services`, `PUT /api/services/:id`, `DELETE /api/services/:id`.
--   Para `SiteSettings`, solo necesitarás `GET /api/settings` y `PUT /api/settings`.
+*   **Código y Estructura:**
+    *   **Refactorizar `server.ts`:** El archivo `server.ts` es muy grande. Se podría dividir la lógica de las rutas en archivos separados por módulo (ej. `routes/jobs.ts`, `routes/companies.ts`) e importarlos en el archivo principal. Esto mejoraría drásticamente la legibilidad y mantenibilidad.
+    *   **Servicios Genéricos:** El `createCrudEndpoints` es una buena idea, pero es muy genérico. Para modelos más complejos, se está escribiendo la lógica directamente en `server.ts`. Se podría evolucionar hacia un patrón de "servicios" o "repositorios" donde la lógica de negocio y de base de datos para cada modelo esté encapsulada en su propia clase o módulo.
 
 ---
 
-### **Paso 4: Consideraciones Adicionales**
+#### 3. Análisis del Frontend
 
--   **Autenticación y Autorización:** Para los endpoints del admin, implementa un middleware en Express que verifique el rol del usuario (y, en una app real, un token JWT).
--   **Manejo de Datos Multilingües:** Los campos `Json` en Prisma almacenarán los objetos `{ "es": "...", "en": "...", "fr": "..." }`. El backend simplemente los guardará y los devolverá tal cual. El frontend ya se encarga de mostrar el idioma correcto.
--   **Validación de Datos:** Antes de procesar cualquier solicitud en el backend, valida los datos del `body` y de los `query params` para asegurar que son correctos y evitar errores.
+**Puntos Fuertes:**
+*   **Componentes Reutilizables:** El uso de componentes en `/components/common` es excelente para mantener la consistencia de la UI.
+*   **Gestión de Estado:** Se utiliza `React.Context` (`AuthContext`, `I18nContext`), lo cual es adecuado para el estado global de la aplicación.
+*   **Internacionalización (i18n):** El soporte para múltiples idiomas está bien implementado.
 
-### **Paso 5: Despliegue (Hosting)**
+**Áreas de Mejora:**
 
-Una vez que el backend esté completo y conectado:
+*   **Rendimiento:**
+    *   **Carga de Datos:** En varias páginas se realizan múltiples llamadas a la API en `useEffect`. Se podrían combinar algunas de estas llamadas en un único endpoint en el backend si los datos se necesitan siempre juntos. Por ejemplo, en `AdminDashboardPage`, se podrían cargar todas las estadísticas en una sola petición.
+    *   **Memoización:** El uso de `useMemo` como en la nueva `AdminCvSubmissionsPage` es un buen ejemplo a seguir. Se debería aplicar en otros componentes que realicen cálculos o filtrados complejos para evitar re-renderizados innecesarios.
+    *   **Code Splitting:** La aplicación podría beneficiarse de la división de código por ruta (Route-based code splitting) usando `React.lazy()` y `Suspense`. Esto reduciría el tamaño del bundle inicial y mejoraría el tiempo de carga percibido.
 
-1.  **Frontend:** Construye los archivos estáticos de React (`npm run build`).
-2.  **Backend:** Construye el proyecto de TypeScript a JavaScript (`npm run build`).
-3.  **Hosting:**
-    -   Sube los archivos estáticos del frontend a un servicio como Vercel, Netlify o un bucket S3.
-    -   Despliega el backend en un servicio como Heroku, Render o un contenedor en la nube (AWS, Google Cloud).
-    -   Utiliza una base de datos PostgreSQL gestionada (ej. AWS RDS, Heroku Postgres).
-    -   Configura las variables de entorno en producción, especialmente `DATABASE_URL` y la URL del frontend para la configuración de CORS.
+*   **Experiencia de Usuario (UX):**
+    *   **Feedback al Usuario:** Aunque se muestran mensajes de carga y error, se podría mejorar el feedback. Por ejemplo, al guardar un formulario, en lugar de solo cerrar el modal, se podría mostrar una notificación "toast" no intrusiva (ej. con `react-hot-toast`) para confirmar que la acción fue exitosa.
+    *   **Optimistic UI Updates:** Para acciones rápidas (como marcar un CV como leído), se podría actualizar la UI inmediatamente y revertir el cambio solo si la llamada a la API falla. Esto hace que la aplicación se sienta mucho más rápida.
 
-**Conclusión:** Siguiendo esta guía paso a paso, podrás transformar el prototipo en una aplicación robusta, escalable y lista para producción. ¡Adelante!
+*   **UI y Diseño:**
+    *   **Consistencia:** Hay una buena base, pero se podría crear una guía de estilo más estricta o un "design system" con todos los componentes base (botones, inputs, tarjetas, etc.) para asegurar una consistencia total.
+    *   **Librerías de Componentes:** Para acelerar el desarrollo y obtener componentes más pulidos y accesibles, se podría considerar integrar una librería como **Shadcn/UI** o **Mantine**, que son muy populares y personalizables.
+
+---
+
+#### 4. Propuestas de Mejora y Nuevas Funcionalidades
+
+**Mejoras de Alto Impacto (Quick Wins):**
+
+1.  **Refactorizar `server.ts`:** Dividir las rutas en módulos separados. Es un cambio de bajo riesgo con un gran impacto en la mantenibilidad.
+2.  **Implementar un Sistema de Notificaciones "Toast":** Añadir `react-hot-toast` o similar para un feedback al usuario más moderno y menos intrusivo que los `alert()`.
+3.  **Añadir Logging Detallado en el Backend:** Usar `winston` para registrar errores detallados, lo que salvará horas de depuración en el futuro.
+
+**Nuevas Funcionalidades Sugeridas:**
+
+1.  **Dashboard de Candidato Mejorado:**
+    *   **Estadísticas:** Mostrar al candidato cuántas veces su perfil ha sido visto por empresas.
+    *   **Sugerencias de Mejora de Perfil:** Además de la barra de completitud, se podrían dar sugerencias más inteligentes basadas en las vacantes a las que aplica.
+
+2.  **Pipeline de Contratación para Empresas (Kanban):** La página de aplicantes a una vacante se beneficiaría enormemente de una vista tipo Kanban (como Trello) donde los reclutadores puedan arrastrar y soltar candidatos entre columnas (`Recibido`, `En Revisión`, `Entrevista`, `Contratado`).
+
+3.  **Sistema de Notificaciones Interno:**
+    *   Notificar a las empresas por email o en la app cuando un candidato aplica a su vacante.
+    *   Notificar a los candidatos cuando el estado de su aplicación cambia.
+
+4.  **Búsqueda Avanzada y Alertas de Empleo:**
+    *   Permitir a los candidatos guardar búsquedas y crear alertas por email para recibir notificaciones cuando se publiquen nuevas vacantes que coincidan con sus criterios.
+
+**Mejoras Técnicas:**
+
+1.  **Suite de Pruebas:** La aplicación carece de pruebas automatizadas. Introducir **Jest** y **React Testing Library** en el frontend, y Jest en el backend, aumentaría la fiabilidad del código y permitiría hacer cambios con más confianza.
+2.  **Actualización de Dependencias:** Hay una advertencia de Prisma sobre una nueva versión mayor. Es importante mantener las dependencias actualizadas para recibir mejoras de rendimiento y parches de seguridad.
+3.  **CI/CD (Integración y Despliegue Continuo):** Configurar un pipeline simple con GitHub Actions para que ejecute las pruebas y lints automáticamente en cada pull request.
+
+---
+
+### **Historial de Tareas Recientes**
+
+*   **Funcionalidad: Módulo de Newsletter Avanzado (Completado)**
+    *   **Problema:** La funcionalidad de suscripción al boletín era muy básica y no tenía gestión.
+    *   **Solución:** Se ha implementado un módulo completo de administración de newsletter.
+        *   **Gestión de Suscriptores:**
+            *   Se creó una nueva página en el panel de administración (`/admin/newsletter`).
+            *   Muestra una lista de todos los suscriptores con su fecha de suscripción.
+            *   Permite exportar la lista completa de suscriptores a un archivo Excel.
+        *   **Creación y Envío de Campañas:**
+            *   Se añadió una pestaña de "Crear Campaña" con un editor de texto enriquecido (`react-quill-new`) para redactar correos.
+            *   Se implementó un endpoint en el backend (`/api/newsletter/send`) que recibe la campaña.
+            *   El backend simula el envío a todos los suscriptores, registrando la acción en la consola del servidor.
+        *   **Configuración Dinámica:**
+            *   Se añadió un campo `emailSettings` a la base de datos para guardar configuraciones de envío de correo.
+            *   Se implementó un formulario en "Ajustes del Sitio" para que el administrador pueda configurar el proveedor de correo (ej. SendGrid), la clave de API y el email remitente.
+            *   El endpoint de envío ahora utiliza estas configuraciones de la base de datos para la simulación.
+        *   **Mejoras Técnicas y Bugs:**
+            *   Se solucionó un problema de compatibilidad de librerías instalando `react-quill-new` para soportar React 19.
+            *   Se resolvieron múltiples bugs de renderizado y de compilación durante la implementación.
+            *   Se solucionó un problema persistente con las migraciones de Prisma y las variables de entorno.
+
+#### **Funcionalidad: Mejoras en la administración de vacantes (Completado)**
+Se ha mejorado la página de administración de vacantes con las siguientes funcionalidades:
+*   **Backend:**
+    *   Se ha añadido un endpoint `GET /api/jobs/:jobId/applicants/excel` para descargar los datos de los postulantes en formato Excel.
+    *   Se ha optimizado la consulta del endpoint `GET /api/jobs` para incluir el conteo de postulantes directamente.
+*   **Frontend:**
+    *   La tabla de vacantes ahora muestra la fecha de publicación y el conteo de postulantes con un icono.
+    *   Se ha implementado un menú desplegable de acciones para cada vacante con opciones para:
+        *   Reiniciar (activar)
+        *   Detener (pausar)
+        *   Ocultar (hacer interna)
+        *   Publicar (hacer pública y activa)
+        *   Modificar (editar)
+        *   Eliminar
+        *   Descargar Excel de postulantes.
+    *   Se ha corregido la clave de traducción para el estado "Oculta".
+*   **i18n:** Se han añadido todas las nuevas traducciones para las opciones del menú desplegable.
+
+#### **Funcionalidad: Mejoras en la administración de formularios de contacto y dashboard (Completado)**
+Se ha mejorado la página de administración de formularios de contacto y el dashboard con las siguientes funcionalidades:
+*   **Backend:**
+    *   Se ha añadido un campo `status` al modelo `ContactSubmission`.
+    *   Se ha creado un endpoint `PUT /api/contact-submissions/:id/status` para actualizar el estado de un envío.
+    *   Se ha creado un endpoint `GET /api/admin/dashboard-stats` para obtener estadísticas del dashboard (nuevos/total mensajes de contacto, nuevos/total CVs).
+*   **Frontend:**
+    *   La página de administración de formularios de contacto ha sido rediseñada para incluir:
+        *   Gestión de estado para cada mensaje.
+        *   Indicador visual para mensajes nuevos.
+        *   Filtros y búsqueda por estado y contenido.
+        *   Un modal para ver los detalles completos del mensaje.
+    *   El dashboard de administración ahora muestra:
+        *   Alertas para nuevos mensajes de contacto y CVs.
+        *   Tarjetas de estadísticas actualizadas con conteos de mensajes y CVs (nuevos/total).
+*   **i18n:** Se han añadido todas las nuevas traducciones.
+
+#### **Funcionalidad: Mejora de la gestión de CVs (Completado)**
+Se ha mejorado la página de administración de CVs con las siguientes funcionalidades:
+*   **Backend:**
+    *   Se ha añadido un campo `subject` y `isRead` al modelo `CVSubmission`.
+    *   Se ha creado un endpoint `PUT /api/cv-submissions/:id/read` para marcar un CV como leído.
+*   **Frontend:**
+    *   Se ha añadido un campo de "Asunto" al formulario de envío de CV.
+    *   La página de administración de CVs ha sido rediseñada para incluir:
+        *   Búsqueda y filtros (leído/no leído).
+        *   Indicador visual para CVs no leídos.
+        *   Selección múltiple y descarga masiva.
+        *   Se marca como leído automáticamente al descargar.
+*   **i18n:** Se han añadido todas las nuevas traducciones.
+
+#### **Funcionalidad: Dashboard de Analíticas de Empresas (Completado)**
+
+Se ha implementado un nuevo dashboard para administradores que mejora la visualización y gestión de empresas.
+
+*   **Backend:**
+    *   Se añadió la fecha de registro (`createdAt`) al modelo `Company` para un mejor seguimiento.
+    *   Se creó un nuevo endpoint (`GET /api/admin/companies-analytics`) que devuelve una lista de empresas enriquecida con su plan de suscripción y el conteo de vacantes publicadas.
+    *   El endpoint soporta filtrado por ubicación (dirección).
+*   **Frontend:**
+    *   La página de `AdminCompaniesPage` fue rediseñada completamente para incluir:
+        *   Tarjetas de KPIs (Total de Empresas, Total de Vacantes, etc.).
+        *   Una barra de filtro por ubicación.
+        *   Una tabla de datos mejorada con la nueva información.
+*   **i18n:** Se añadieron todos los nuevos textos a los archivos de traducción en español, inglés y francés.
+
+#### **Corrección de Bugs (Completado)**
+
+*   **Envío de CV (Completado):**
+    *   Se solucionó un error 404 al no existir el endpoint `POST /api/cv-submissions`.
+    *   Se solucionó un error 500 posterior debido a que el tipo de dato de `cvBase64` en la base de datos era muy pequeño. Se migró a `LONGTEXT`.
+*   **Asignación de Plan Gratuito (Completado):**
+    *   Se corrigió la lógica de registro para que a las nuevas empresas se les asigne automáticamente el plan gratuito (`plan_free`).
+*   **Filtro de Vacantes (Completado):**
+    *   Se reescribió por completo la lógica de filtrado de vacantes usando **SQL nativo (`queryRaw`)** para solucionar un problema de incompatibilidad de Prisma con los filtros complejos en campos `JSON`.
+    *   La búsqueda ahora es insensible a mayúsculas/minúsculas y funciona correctamente.
+*   **Edición de Empresas (Completado):**
+    *   Se solucionó un error que impedía guardar al enviar el `id` en el cuerpo de la petición.
+    *   Se corrigió un error de tipo de dato con la `latitud` y `longitud`, asegurando que se guarden como números.
+    *   Se aumentó el tamaño del campo `logo` en la base de datos para permitir guardar imágenes (Base64).
+*   **Visualización de Pop-ups (Completado):**
+    *   Se reactivó y reescribió el endpoint `GET /api/popups/active`.
+    *   La nueva lógica filtra los pop-ups en el código del servidor para soportar reglas complejas de segmentación (página, dispositivo, rol de usuario) que no eran posibles directamente en la base de datos.
+
+---
+
+### **Informe de Implementación y Próximos Pasos**
+
+Aquí se detalla el progreso de las tareas recientes y lo que queda por hacer.
+
+#### **Tareas Completadas Recientemente:**
+
+*   **Funcionalidad: Actualización de Estado de Postulantes (Pipeline Kanban)**
+    *   **Problema:** Los cambios de estado de los aplicantes en el pipeline no persistían al cambiar de ventana.
+    *   **Solución:** Se añadió el endpoint `PUT /api/applications/:id/status` en el backend para permitir la actualización del estado de las postulaciones en la base de datos. El frontend ya realizaba la llamada a la API correctamente.
+
+*   **Corrección de Traducciones en Panel de Administración (Gestión de Vacantes)**
+    *   **Problema:** Ciertas claves de traducción en el menú desplegable de acciones (`admin.jobs.dropdown.*`) y el encabezado de la tabla (`admin.jobs.tableDate`) se mostraban sin traducir.
+    *   **Solución:** Se corrigieron las claves de traducción en `AdminJobsPage.tsx` para que coincidieran con la estructura anidada en `translations/es.json` (ej. `admin.jobs.form.dropdown.stop`).
+
+*   **Mejora de la Página de Servicios (`ServicesPage.tsx`)**
+    *   **Problema:** La página se veía "plana" y carecía de llamadas a la acción.
+    *   **Solución:**
+        *   Se mejoró la sección principal (hero) con una descripción más atractiva y un botón "Solicitar un Servicio" que enlaza a la página de contacto.
+        *   Se añadió una sección de suscripción al boletín con un formulario básico en el frontend.
+
+*   **Implementación de Suscripción a Boletín (Fase 1: Backend y Frontend API)**
+    *   **Objetivo:** Permitir a los usuarios suscribirse a un boletín y almacenar sus correos electrónicos.
+    *   **Solución:**
+        *   **Modelo Prisma:** Se añadió el modelo `NewsletterSubscriber` (`id`, `email` único, `subscribedAt`) en `backend/prisma/schema.prisma`.
+        *   **Migración de Base de Datos:** Se ejecutó la migración para crear la tabla `NewsletterSubscriber` en la base de datos.
+        *   **Endpoint Backend:** Se creó el endpoint `POST /api/newsletter/subscribe` en `backend/server.ts` para guardar los correos electrónicos, incluyendo validación con Zod y manejo de duplicados.
+        *   **Frontend API:** Se añadió la función `api.subscribeToNewsletter` en `services/api.ts`.
+        *   **Integración Frontend:** Se actualizó el formulario de suscripción en `ServicesPage.tsx` para usar la nueva API y mostrar mensajes de éxito/error.
+
+*   **Corrección de Carga de Imágenes en Artículos de Blog**
+    *   **Problema:** No se podían guardar artículos de blog con imágenes (especialmente Base64) debido a la limitación de tamaño del campo `imageUrl` en la base de datos.
+    *   **Solución:** Se modificó el campo `imageUrl` del modelo `BlogPost` en `backend/prisma/schema.prisma` a `@db.LongText` para permitir almacenar URLs o cadenas Base64 largas. Se ejecutó la migración de base de datos correspondiente.
+
+*   **Resolución de Problemas de Conexión a Base de Datos del Backend (Causa Raíz de Traducciones y Contenido no cargado)**
+    *   **Problema:** El backend no podía conectarse a la base de datos al ejecutarse localmente (`npm run dev`), lo que causaba que el frontend no cargara datos ni traducciones.
+    *   **Solución:**
+        *   Se configuró `dotenv` explícitamente en `backend/server.ts` (`import * => dotenv from 'dotenv'; dotenv.config({ path: './.env' });`) para asegurar la carga de variables de entorno.
+        *   Se configuró el constructor de `PrismaClient` para usar explícitamente `process.env.DATABASE_URL` como URL de la base de datos, forzando la lectura de la variable de entorno.
+        *   Se ajustó la `DATABASE_URL` en `backend/.env` a `localhost` (en lugar de `db`) para el desarrollo local, permitiendo la conexión desde la máquina host.
+
+#### **Próximos Pasos y Tareas Pendientes:**
+
+Para continuar con el desarrollo, se deben abordar las siguientes tareas:
+
+1.  **Verificación de Soluciones Recientes (Requiere tu Acción):**
+    *   **Conexión a Base de Datos y Traducciones:** Es crucial que reinicies tu servidor backend, borres la caché de tu navegador y realices una recarga forzada del frontend. Luego, confirma que la página carga correctamente, las traducciones aparecen y el formulario de suscripción al boletín funciona sin errores.
+    *   **Descarga de Excel (Gestión de Vacantes):** Aunque se añadieron logs en el backend, aún necesitamos tu ayuda para diagnosticar por qué no funciona. Por favor, proporciona la salida de la consola del backend cuando intentes descargar un Excel.
+
+2.  **Implementación de Suscripción a Boletín (Fase 2: Interfaz de Administración):**
+    *   **Objetivo:** Permitir a los administradores visualizar y gestionar la lista de suscriptores.
+    *   **Tareas:**
+        *   **Endpoint Backend para Listado:** Crear `GET /api/newsletter/subscribers` en `backend/server.ts` para obtener todos los suscriptores (solo para `admin`).
+        *   **Actualizar Sidebar de Administración:** Añadir un enlace a la nueva página `AdminNewsletterPage.tsx` en `components/layout/AdminLayout.tsx` para que sea accesible desde el panel de administración.
+
+3.  **Implementación de Suscripción a Boletín (Fase 3: Exportar Suscriptores - Opcional):**
+    *   **Objetivo:** Permitir a los administradores exportar la lista de suscriptores.
+    *   **Tareas:**
+        *   **Endpoint Backend para Exportación:** Crear `GET /api/newsletter/subscribers/excel`.
+        *   **Botón de Exportación en Frontend:** Añadir un botón en `AdminNewsletterPage.tsx` para activar la descarga del Excel.
+
+4.  **Implementación de Suscripción a Boletín (Fase 4: Envío de Mensajes - Futuro):**
+    *   **Objetivo:** Permitir a los administradores enviar correos electrónicos a los suscriptores.
+    *   **Consideraciones:** Esta es una tarea compleja que implica la integración con servicios de envío de correo electrónico (ej. SendGrid, Mailgun) y la lógica para componer y enviar campañas. Se abordará una vez completadas las fases anteriores.
+
+5.  **Administración de Formularios de Contacto (Edición de Contenido):**
+    *   **Objetivo:** Si se requiere, permitir la edición del *contenido* de los mensajes de contacto enviados.
+    *   **Consideraciones:** Actualmente, solo se gestiona el estado de los envíos. La edición del contenido original de un mensaje de contacto es una funcionalidad no estándar y requeriría una discusión más profunda sobre su necesidad y diseño.
+
+---
+
+### **Historial de Tareas Recientes (Original)**
+
+#### **Funcionalidad: Mejoras en la administración de vacantes (Completado)**
+Se ha mejorado la página de administración de vacantes con las siguientes funcionalidades:
+*   **Backend:**
+    *   Se ha añadido un endpoint `GET /api/jobs/:jobId/applicants/excel` para descargar los datos de los postulantes en formato Excel.
+    *   Se ha optimizado la consulta del endpoint `GET /api/jobs` para incluir el conteo de postulantes directamente.
+*   **Frontend:**
+    *   La tabla de vacantes ahora muestra la fecha de publicación y el conteo de postulantes con un icono.
+    *   Se ha implementado un menú desplegable de acciones para cada vacante con opciones para:
+        *   Reiniciar (activar)
+        *   Detener (pausar)
+        *   Ocultar (hacer interna)
+        *   Publicar (hacer pública y activa)
+        *   Modificar (editar)
+        *   Eliminar
+        *   Descargar Excel de postulantes.
+    *   Se ha corregido la clave de traducción para el estado "Oculta".
+*   **i18n:** Se han añadido todas las nuevas traducciones para las opciones del menú desplegable.
+
+#### **Funcionalidad: Mejoras en la administración de formularios de contacto y dashboard (Completado)**
+Se ha mejorado la página de administración de formularios de contacto y el dashboard con las siguientes funcionalidades:
+*   **Backend:**
+    *   Se ha añadido un campo `status` al modelo `ContactSubmission`.
+    *   Se ha creado un endpoint `PUT /api/contact-submissions/:id/status` para actualizar el estado de un envío.
+    *   Se ha creado un endpoint `GET /api/admin/dashboard-stats` para obtener estadísticas del dashboard (nuevos/total mensajes de contacto, nuevos/total CVs).
+*   **Frontend:**
+    *   La página de administración de formularios de contacto ha sido rediseñada para incluir:
+        *   Gestión de estado para cada mensaje.
+        *   Indicador visual para mensajes nuevos.
+        *   Filtros y búsqueda por estado y contenido.
+        *   Un modal para ver los detalles completos del mensaje.
+    *   El dashboard de administración ahora muestra:
+        *   Alertas para nuevos mensajes de contacto y CVs.
+        *   Tarjetas de estadísticas actualizadas con conteos de mensajes y CVs (nuevos/total).
+*   **i18n:** Se han añadido todas las nuevas traducciones.
+
+#### **Funcionalidad: Mejora de la gestión de CVs (Completado)**
+Se ha mejorado la página de administración de CVs con las siguientes funcionalidades:
+*   **Backend:**
+    *   Se ha añadido un campo `subject` y `isRead` al modelo `CVSubmission`.
+    *   Se ha creado un endpoint `PUT /api/cv-submissions/:id/read` para marcar un CV como leído.
+*   **Frontend:**
+    *   Se ha añadido un campo de "Asunto" al formulario de envío de CV.
+    *   La página de administración de CVs ha sido rediseñada para incluir:
+        *   Búsqueda y filtros (leído/no leído).
+        *   Indicador visual para CVs no leídos.
+        *   Selección múltiple y descarga masiva.
+        *   Se marca como leído automáticamente al descargar.
+*   **i18n:** Se han añadido todas las nuevas traducciones.
+
+#### **Funcionalidad: Dashboard de Analíticas de Empresas (Completado)**
+
+Se ha implementado un nuevo dashboard para administradores que mejora la visualización y gestión de empresas.
+
+*   **Backend:**
+    *   Se añadió la fecha de registro (`createdAt`) al modelo `Company` para un mejor seguimiento.
+    *   Se creó un nuevo endpoint (`GET /api/admin/companies-analytics`) que devuelve una lista de empresas enriquecida con su plan de suscripción y el conteo de vacantes publicadas.
+    *   El endpoint soporta filtrado por ubicación (dirección).
+*   **Frontend:**
+    *   La página de `AdminCompaniesPage` fue rediseñada completamente para incluir:
+        *   Tarjetas de KPIs (Total de Empresas, Total de Vacantes, etc.).
+        *   Una barra de filtro por ubicación.
+        *   Una tabla de datos mejorada con la nueva información.
+*   **i1-8n:** Se añadieron todos los nuevos textos a los archivos de traducción en español, inglés y francés.
+
+#### **Corrección de Bugs (Completado)**
+
+*   **Envío de CV (Completado):**
+    *   Se solucionó un error 404 al no existir el endpoint `POST /api/cv-submissions`.
+    *   Se solucionó un error 500 posterior debido a que el tipo de dato de `cvBase64` en la base de datos era muy pequeño. Se migró a `LONGTEXT`.
+*   **Asignación de Plan Gratuito (Completado):**
+    *   Se corrigió la lógica de registro para que a las nuevas empresas se les asigne automáticamente el plan gratuito (`plan_free`).
+*   **Filtro de Vacantes (Completado):**
+    *   Se reescribió por completo la lógica de filtrado de vacantes usando **SQL nativo (`queryRaw`)** para solucionar un problema de incompatibilidad de Prisma con los filtros complejos en campos `JSON`.
+    *   La búsqueda ahora es insensible a mayúsculas/minúsculas y funciona correctamente.
+*   **Edición de Empresas (Completado):**
+    *   Se solucionó un error que impedía guardar al enviar el `id` en el cuerpo de la petición.
+    *   Se corrigió un error de tipo de dato con la `latitud` y `longitud`, asegurando que se guarden como números.
+    *   Se aumentó el tamaño del campo `logo` en la base de datos para permitir guardar imágenes (Base64).
+*   **Visualización de Pop-ups (Completado):**
+    *   Se reactivó y reescribió el endpoint `GET /api/popups/active`.
+    *   La nueva lógica filtra los pop-ups en el código del servidor para soportar reglas complejas de segmentación (página, dispositivo, rol de usuario) que no eran posibles directamente en la base de datos.

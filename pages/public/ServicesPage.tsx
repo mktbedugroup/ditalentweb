@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import { Card } from '../../components/common/Card';
+import { Link } from 'react-router-dom';
 import { api } from '../../services/api';
 import type { Service } from '../../types';
 import { useI18n } from '../../contexts/I18nContext';
@@ -23,6 +24,8 @@ const ServiceDetailCard: React.FC<{ title: string, description: string, icon: Re
 const ServicesPage: React.FC = () => {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
+  const [newsletterEmail, setNewsletterEmail] = useState('');
+  const [newsletterMessage, setNewsletterMessage] = useState('');
   const { t, t_dynamic } = useI18n();
 
   useEffect(() => {
@@ -38,6 +41,18 @@ const ServicesPage: React.FC = () => {
     };
     fetchServices();
   }, []);
+
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api.subscribeToNewsletter(newsletterEmail);
+      setNewsletterMessage(t('services.newsletterSuccess'));
+      setNewsletterEmail('');
+    } catch (error: any) {
+      console.error('Failed to subscribe to newsletter:', error);
+      setNewsletterMessage(error.message || t('services.newsletterError'));
+    }
+  };
 
   const icons = [
     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21a6 6 0 00-9-5.197m0 0A5 5 0 019 10a5 5 0 014.242 2.158M12 4.354V10m0 0l-3.75-3.75M12 10l3.75-3.75" /></svg>,
@@ -60,6 +75,14 @@ const ServicesPage: React.FC = () => {
                 <p className="mt-6 max-w-2xl mx-auto text-xl text-gray-500">
                     {t('services.subtitle')}
                 </p>
+                <p className="mt-4 max-w-2xl mx-auto text-lg text-gray-600">
+                    {t('services.heroDescription')}
+                </p>
+                <div className="mt-8 flex justify-center">
+                    <Link to="/contact" className="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary hover:bg-primary-dark">
+                        {t('services.requestServiceCta')}
+                    </Link>
+                </div>
             </div>
         </div>
 
@@ -79,6 +102,30 @@ const ServicesPage: React.FC = () => {
                         ))}
                     </div>
                 )}
+            </div>
+        </div>
+
+        <div className="bg-gray-100 py-16">
+            <div className="max-w-md mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                <h2 className="text-3xl font-extrabold text-gray-900">{t('services.newsletterTitle')}</h2>
+                <p className="mt-4 text-lg text-gray-600">{t('services.newsletterSubtitle')}</p>
+                <form onSubmit={handleNewsletterSubmit} className="mt-8 flex flex-col sm:flex-row sm:justify-center">
+                    <input
+                        type="email"
+                        placeholder={t('services.newsletterPlaceholder')}
+                        value={newsletterEmail}
+                        onChange={(e) => setNewsletterEmail(e.target.value)}
+                        className="w-full sm:w-auto px-5 py-3 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary focus:border-primary sm:max-w-xs"
+                        required
+                    />
+                    <button
+                        type="submit"
+                        className="mt-3 sm:mt-0 sm:ml-3 w-full sm:w-auto px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-secondary hover:bg-secondary-dark"
+                    >
+                        {t('services.newsletterCta')}
+                    </button>
+                </form>
+                {newsletterMessage && <p className="mt-4 text-sm text-gray-600">{newsletterMessage}</p>}
             </div>
         </div>
       </main>

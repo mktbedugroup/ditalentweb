@@ -1,0 +1,115 @@
+Guía para Subir la Aplicación Ditalent a un Hosting
+
+Esta guía detalla los pasos necesarios para desplegar la aplicación Ditalent en un entorno de hosting. Se distinguen las acciones que yo, como agente, puedo realizar y las que tú, como usuario, deberás ejecutar o verificar.
+
+---
+
+**Parte 1: Preparación y Empaquetado (Acciones del Agente)**
+
+1.  **Generar la build del Frontend:**
+    *   **Mi Acción:** Ejecutaré el comando de build del frontend para generar los archivos estáticos optimizados.
+        ```bash
+        npm run build
+        ```
+        (Asumiendo que `npm run build` es el comando estándar para Vite/React).
+    *   **Resultado:** Se creará una carpeta `dist/` (o similar) en la raíz del proyecto con los archivos HTML, CSS, JavaScript y assets listos para ser servidos.
+
+2.  **Preparar el Backend para Producción:**
+    *   **Mi Acción:** El backend está en TypeScript. Para producción, se debe compilar a JavaScript.
+        ```bash
+        cd backend
+        npm run build # o tsc
+        ```
+        (Asumiendo que existe un script de build o que `tsc` compila el proyecto).
+    *   **Resultado:** Se generará una carpeta con los archivos JavaScript compilados (ej. `backend/dist/`).
+
+3.  **Empaquetar la Aplicación (Opcional, si el hosting no usa Docker directamente):**
+    *   **Mi Acción:** Si el hosting no soporta Docker Compose directamente, se pueden empaquetar el frontend y el backend por separado.
+        *   **Frontend:** La carpeta `dist/` generada en el paso 1.
+        *   **Backend:** La carpeta `dist/` del backend junto con `package.json`, `package-lock.json` y `node_modules` (si no se instalan en el servidor).
+    *   **Consideración:** Si el hosting soporta Docker, el `docker-compose.yml` y los `Dockerfile` ya son el "empaquetado".
+
+---
+
+**Parte 2: Configuración del Hosting y Base de Datos (Acciones del Usuario)**
+
+1.  **Seleccionar el Tipo de Hosting:**
+    *   **Tu Acción:** Decide si usarás un hosting que soporte Docker (VPS con Docker, servicios como AWS ECS, Google Cloud Run, DigitalOcean App Platform) o un hosting tradicional (VPS con Node.js y servidor web como Nginx/Apache).
+    *   **Recomendación:** Para esta aplicación con Docker Compose, un VPS con Docker es lo más sencillo.
+
+2.  **Configurar la Base de Datos MySQL:**
+    *   **Tu Acción:**
+        *   **Si usas Docker Compose:** El servicio `db` en `docker-compose.yml` ya configura MySQL. Asegúrate de que los volúmenes (`mysql_data`) persistan los datos.
+        *   **Si usas un servicio de base de datos gestionado (ej. AWS RDS, DigitalOcean Managed Database):** Crea una instancia de MySQL. Anota el host, puerto, usuario, contraseña y nombre de la base de datos.
+        *   **Si usas MySQL en tu VPS:** Instala MySQL, crea un usuario y una base de datos.
+    *   **Importante:** La `DATABASE_URL` que usamos en desarrollo (`mysql://root:rootpassword@db:3306/ditalent`) deberá ser actualizada con los datos de tu base de datos de producción.
+
+3.  **Variables de Entorno:**
+    *   **Tu Acción:** En tu entorno de hosting, configura las siguientes variables de entorno:
+        *   `DATABASE_URL`: La URL de conexión a tu base de datos MySQL de producción (ej. `mysql://tu_usuario:tu_password@tu_host:3306/tu_base_de_datos`).
+        *   `JWT_SECRET`: Una clave secreta fuerte y única para la generación de tokens JWT. **¡No uses 'your_jwt_secret_key' en producción!**
+        *   Cualquier otra variable de entorno que tu aplicación necesite (ej. claves de API de terceros, configuraciones de correo electrónico, etc.).
+
+4.  **Subir los Archivos al Servidor:**
+    *   **Tu Acción:**
+        *   **Si usas Docker Compose:** Sube todo el proyecto (incluyendo `docker-compose.yml`, `backend/`, `Dockerfile`s, etc.) a tu servidor.
+        *   **Si usas hosting tradicional:**
+            *   Sube la carpeta `dist/` del frontend a la raíz de tu servidor web (ej. `/var/www/html` para Nginx/Apache).
+            *   Sube los archivos compilados del backend (ej. `backend/dist/`, `package.json`, `node_modules`) a una carpeta en tu servidor (ej. `/home/ditalent/backend`).
+
+5.  **Instalar Dependencias del Backend (si no usas Docker):**
+    *   **Tu Acción:** Si subiste el backend sin `node_modules`, navega a la carpeta del backend en el servidor y ejecuta:
+        ```bash
+        npm install --production
+        ```
+
+6.  **Ejecutar Migraciones de Prisma en Producción:**
+    *   **Tu Acción:** Una vez que la `DATABASE_URL` esté configurada en el servidor y las dependencias del backend instaladas, navega a la carpeta del backend en el servidor y ejecuta:
+        ```bash
+        npx prisma migrate deploy
+        ```
+        Esto aplicará todas las migraciones pendientes a tu base de datos de producción.
+
+7.  **Iniciar la Aplicación:**
+    *   **Tu Acción:**
+        *   **Si usas Docker Compose:** Navega a la raíz del proyecto en el servidor y ejecuta:
+            ```bash
+            docker-compose up -d --build
+            ```
+        *   **Si usas hosting tradicional (Node.js):** Navega a la carpeta del backend en el servidor y ejecuta:
+            ```bash
+            npm start # o node dist/server.js (si el script start ejecuta el archivo compilado)
+            ```
+            Deberás usar un gestor de procesos como PM2 para mantener el proceso de Node.js corriendo y reiniciarlo automáticamente.
+            ```bash
+            npm install -g pm2
+            pm2 start dist/server.js --name "ditalent-backend"
+            pm2 save
+            pm2 startup
+            ```
+
+8.  **Configurar un Servidor Web (Nginx/Apache) para el Frontend (si usas hosting tradicional):**
+    *   **Tu Acción:** Configura Nginx o Apache para servir los archivos estáticos del frontend desde la carpeta `dist/` y para actuar como proxy inverso para las solicitudes al backend (`/api/*`).
+
+---
+
+**Parte 3: Verificación y Mantenimiento (Acciones del Usuario)**
+
+1.  **Verificar la Aplicación:**
+    *   **Tu Acción:** Accede a la URL de tu aplicación en el navegador y verifica que todo funcione correctamente: frontend, llamadas a la API, autenticación, etc.
+
+2.  **Monitoreo y Logs:**
+    *   **Tu Acción:** Configura herramientas de monitoreo para tu servidor y aplicación. Revisa los logs del backend y del servidor web regularmente para detectar errores.
+
+3.  **Backups de la Base de Datos:**
+    *   **Tu Acción:** Implementa una estrategia de backups regulares para tu base de datos.
+
+---
+
+**Consideraciones Adicionales:**
+
+*   **HTTPS:** Configura HTTPS para tu dominio usando Let's Encrypt o un certificado SSL/TLS de tu proveedor.
+*   **Dominio:** Asegúrate de que tu dominio apunte a la IP de tu servidor.
+*   **Firewall:** Configura el firewall de tu servidor para permitir solo el tráfico necesario (puertos 80, 443, 22).
+
+---

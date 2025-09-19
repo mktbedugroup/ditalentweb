@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only server.ts",
     "start": "node dist/server.js",
-    "build": "tsc",
-    "prisma:migrate": "prisma migrate dev --name init",
+    "build": "prisma generate && tsc",
+    "prisma:migrate": "dotenv -e ./.env -- prisma migrate dev --name init",
     "prisma:generate": "prisma generate",
     "seed": "ts-node prisma/seed.ts",
     "studio": "prisma studio"
@@ -16,6 +16,8 @@
     "@types/jsonwebtoken": "^9.0.10",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "exceljs": "^4.4.0",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "zod": "^4.1.5"
