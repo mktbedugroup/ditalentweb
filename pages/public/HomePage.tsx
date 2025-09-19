@@ -129,7 +129,7 @@ const HomePage: React.FC = () => {
 
         {/* Job Listings Section */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-24">
-           <h2 className="text-3xl font-bold text-center mb-8">{t('home.recentVacancies')}</h2>
+           <h2 className="text-3xl font-bold text-center mb-8">{t('home.recentVacancies')} (v2)</h2>
             {loading ? (
               <div className="text-center py-10">
                 <p className="text-lg text-gray-600">{t('home.loadingOpportunities')}</p>
