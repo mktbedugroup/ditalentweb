@@ -21,6 +21,7 @@ steps:
     - '--allow-unauthenticated'
     - '--port=8080'
     - '--set-secrets=DATABASE_URL=DATABASE_URL:latest'
+    - '--add-cloudsql-instances=hybrid-sentry-472404-f1:us-central1:ditalent-db'
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: gcloud
   args:
