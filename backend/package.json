@@ -4,7 +4,7 @@
   "main": "server.ts",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only server.ts",
-    "start": "npx prisma migrate deploy && node dist/server.js",
+    "start": "node dist/server.js",
     "build": "prisma generate && tsc",
     "prisma:migrate": "dotenv -e ./.env -- prisma migrate dev --name init",
     "prisma:generate": "prisma generate",
