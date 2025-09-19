@@ -9,14 +9,11 @@ steps:
   entrypoint: 'npx'
   args: ['prisma', 'migrate', 'deploy']
   secretEnv: ['DATABASE_URL']
-  volumes:
-  - name: 'prisma-dir'
-    path: '/app/prisma'
   entrypoint: 'bash'
   args:
   - '-c'
   - |
-    cp -r /workspace/backend/prisma /app/
+    cp -r backend/prisma .
     npx prisma migrate deploy
 
 - name: 'gcr.io/cloud-builders/docker'
