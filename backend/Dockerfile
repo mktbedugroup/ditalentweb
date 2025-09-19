@@ -12,6 +12,9 @@ WORKDIR /app
 # where available (npm@5+)
 COPY package*.json ./
 
+# Copy app source code
+COPY . .
+
 # Install dependencies
 RUN npm install
 
