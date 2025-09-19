@@ -9,11 +9,6 @@ steps:
   entrypoint: 'npx'
   args: ['prisma', 'migrate', 'deploy']
   secretEnv: ['DATABASE_URL']
-  volumes:
-  - name: 'backend-source'
-    path: '/workspace/backend'
-  entrypoint: 'npx'
-  args: ['prisma', 'migrate', 'deploy']
 
 - name: 'gcr.io/cloud-builders/docker'
   args: ['build', '-t', 'us-central1-docker.pkg.dev/hybrid-sentry-472404-f1/ditalent-repo/ditalent-frontend:latest', '.', '-f', 'Dockerfile']
