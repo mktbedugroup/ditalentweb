@@ -9,6 +9,15 @@ steps:
   entrypoint: 'npx'
   args: ['prisma', 'migrate', 'deploy']
   secretEnv: ['DATABASE_URL']
+  volumes:
+  - name: 'prisma-dir'
+    path: '/app/prisma'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    cp -r /workspace/backend/prisma /app/
+    npx prisma migrate deploy
 
 - name: 'gcr.io/cloud-builders/docker'
   args: ['build', '-t', 'us-central1-docker.pkg.dev/hybrid-sentry-472404-f1/ditalent-repo/ditalent-frontend:latest', '.', '-f', 'Dockerfile']
