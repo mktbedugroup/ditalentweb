@@ -12,9 +12,6 @@ WORKDIR /app
 # where available (npm@5+)
 COPY package*.json ./
 
-# Copy app source code
-COPY . .
-
 # Install dependencies
 RUN npm install
 
@@ -24,9 +21,11 @@ COPY . .
 # Build the TypeScript application
 RUN npm run build
 
+# Set the environment to production
+ENV NODE_ENV=production
+
 # Expose the port the app runs on
 EXPOSE 8080
 
 # Run the web service on container startup
 CMD [ "npm", "start" ]
-# Forzar reconstrucción de caché: ${Date.now()}

@@ -1,4 +1,3 @@
-
 import crypto from 'crypto';
 import express from 'express';
 import cors from 'cors';
@@ -6,8 +5,11 @@ import { PrismaClient, Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import * as dotenv from 'dotenv';
+
 console.log('[Startup] Backend application starting...');
-dotenv.config({ path: './.env' });
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config({ path: './.env' });
+}
 
 let prisma: PrismaClient;
 
@@ -417,6 +419,7 @@ app.get('/api/admin/companies-analytics', authenticateToken, authorizeRoles(['ad
     if (location) {
         where.address = {
             contains: String(location),
+            mode: 'insensitive'
         };
     }
 
@@ -701,11 +704,11 @@ app.get('/api/jobs/:jobId/applicants/excel', authenticateToken, authorizeRoles([
 
     // Set response headers
     res.setHeader(
-        'Content-Type', 
+        'Content-Type',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     );
     res.setHeader(
-        'Content-Disposition', 
+        'Content-Disposition',
         `attachment; filename=applicants_${jobId}.xlsx`
     );
     console.log('[Excel Export] Response headers set.');
@@ -1184,5 +1187,3 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
-
-// Dummy change to trigger redeployment (2)
