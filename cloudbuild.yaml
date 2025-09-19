@@ -5,7 +5,7 @@ steps:
   args: ['push', 'us-central1-docker.pkg.dev/hybrid-sentry-472404-f1/ditalent-repo/ditalent-backend:latest']
 
 # Step to run database migrations
-- name: 'us-central1-docker.pkg.dev/hybrid-sentry-472404-f1/ditalent-repo/ditalent-backend:latest'
+- name: 'us-central1-docker.pkg.dev/hybrid-sentry-472404-f1/ditalent-repo/ditalent-backend:latest', 
   entrypoint: 'npx'
   args: ['prisma', 'migrate', 'deploy']
   secretEnv: ['DATABASE_URL']
@@ -47,3 +47,4 @@ availableSecrets:
   secretManager:
   - versionName: projects/247804277912/secrets/DATABASE_URL/versions/latest
     env: 'DATABASE_URL'
+logsBucket: gs://hybrid-sentry-472404-f1_cloudbuild_logs
