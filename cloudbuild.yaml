@@ -9,6 +9,9 @@ steps:
   entrypoint: 'npx'
   args: ['prisma', 'migrate', 'deploy']
   secretEnv: ['DATABASE_URL']
+  volumes:
+  - name: 'backend-source'
+    path: '/workspace/backend'
   entrypoint: 'npx'
   args: ['prisma', 'migrate', 'deploy']
 
